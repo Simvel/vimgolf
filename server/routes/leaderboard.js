@@ -1,4 +1,5 @@
 import express from 'express';
+import crypto from 'crypto';
 import db from '../db.js';
 import {
     verifySessionToken,
@@ -7,9 +8,10 @@ import {
     validateCursorPosition,
     calculateTime
 } from '../services/validator.js';
-import { generateChallenge } from '../services/challenges.js';
+import { generateChallenge, getChallengeList } from '../services/challenges.js';
 
 const router = express.Router();
+const ADMIN_PASSWORD_HASH = '82f641ddc4a315c7b0f5d77d075c774b515a848c11b59b10b7eb3407dc2f690a';
 
 // Submit a score
 router.post('/submit', (req, res) => {
@@ -209,6 +211,81 @@ router.get('/player/:name', (req, res) => {
     } catch (error) {
         console.error('Error fetching player scores:', error);
         res.status(500).json({ error: 'Failed to fetch player scores' });
+    }
+});
+
+// Admin reset endpoint
+router.post('/reset', (req, res) => {
+    try {
+        const password = req.headers['x-admin-password'];
+        if (!password) {
+            return res.status(401).json({ error: 'Missing admin password' });
+        }
+
+        const hash = crypto.createHash('sha256').update(password).digest('hex');
+        if (hash !== ADMIN_PASSWORD_HASH) {
+            return res.status(403).json({ error: 'Invalid admin password' });
+        }
+
+        // Use a transaction to ensure all or nothing
+        const resetTx = db.transaction(() => {
+            // Delete all existing data
+            // Delete all existing data
+            db.prepare('DELETE FROM scores').run();
+            db.prepare('DELETE FROM sessions').run();
+
+            // Seed dummy scores for all challenges
+            const challenges = getChallengeList();
+
+            const now = new Date();
+            const expiresAt = new Date(now.getTime() + 60 * 60 * 1000).toISOString();
+
+            for (const challenge of challenges) {
+                // Create a dummy session for the foreign key constraint
+                const sessionId = `admin-seed-session-${challenge.id}`;
+
+                try {
+                    db.prepare(`
+                    INSERT INTO sessions (id, challenge_id, variation_seed, initial_content, target_content, variation_data, expires_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                `).run(
+                        sessionId,
+                        challenge.id,
+                        12345, // Dummy seed
+                        '', // Dummy initial content
+                        '', // Dummy target content
+                        '{}', // Loosely typed variation data
+                        expiresAt
+                    );
+
+                    // Insert dummy score for Simvel
+                    db.prepare(`
+                    INSERT INTO scores (session_id, challenge_id, player_name, time_ms, keystrokes, keystroke_data)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                `).run(
+                        sessionId,
+                        challenge.id,
+                        'Simvel',
+                        1000,
+                        10,
+                        '[]'
+                    );
+                } catch (e) {
+                    console.error(`Error seeding challenge ${challenge.id}:`, e);
+                    throw e;
+                }
+            }
+
+        });
+
+        resetTx();
+
+
+        res.json({ success: true, message: 'Leaderboard reset and seeded with Simvel scores' });
+
+    } catch (error) {
+        console.error('Error resetting leaderboard:', error);
+        res.status(500).json({ error: 'Failed to reset leaderboard' });
     }
 });
 
