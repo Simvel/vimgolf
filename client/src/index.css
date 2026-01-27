@@ -1,0 +1,871 @@
+/* VimGolf CTF - Dark Hacker Theme */
+
+@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap');
+
+:root {
+  /* Color palette */
+  --bg-primary: #0a0a0f;
+  --bg-secondary: #12121a;
+  --bg-tertiary: #1a1a2e;
+  --bg-card: #16162a;
+  
+  --text-primary: #e0e0e0;
+  --text-secondary: #9ca3af;
+  --text-muted: #6b7280;
+  
+  --accent-green: #00ff88;
+  --accent-green-dim: #00cc6a;
+  --accent-cyan: #00d4ff;
+  --accent-purple: #a855f7;
+  --accent-pink: #ec4899;
+  
+  --easy: #4ade80;
+  --medium: #fbbf24;
+  --hard: #f87171;
+  
+  --border-color: #2a2a4a;
+  --border-glow: rgba(0, 255, 136, 0.3);
+  
+  /* Spacing */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  --spacing-2xl: 48px;
+  
+  /* Border radius */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  
+  /* Transitions */
+  --transition-fast: 150ms ease;
+  --transition-normal: 250ms ease;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.6;
+  min-height: 100vh;
+}
+
+.app {
+  min-height: 100vh;
+  background: 
+    radial-gradient(ellipse at top, rgba(0, 255, 136, 0.05) 0%, transparent 50%),
+    radial-gradient(ellipse at bottom right, rgba(168, 85, 247, 0.05) 0%, transparent 50%),
+    var(--bg-primary);
+}
+
+/* ===== LOADING & ERROR STATES ===== */
+.loading-container,
+.error-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  gap: var(--spacing-md);
+}
+
+.loading-spinner {
+  width: 48px;
+  height: 48px;
+  border: 3px solid var(--border-color);
+  border-top-color: var(--accent-green);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.error-container h2 {
+  color: var(--hard);
+}
+
+/* ===== CHALLENGE LIST ===== */
+.challenge-list {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--spacing-2xl) var(--spacing-lg);
+}
+
+.challenge-header {
+  text-align: center;
+  margin-bottom: var(--spacing-2xl);
+}
+
+.challenge-header h1 {
+  font-size: 3.5rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--accent-green), var(--accent-cyan));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: var(--spacing-sm);
+}
+
+.subtitle {
+  font-size: 1.25rem;
+  color: var(--text-secondary);
+}
+
+/* Filter bar */
+.filter-bar {
+  display: flex;
+  justify-content: center;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-xl);
+  flex-wrap: wrap;
+}
+
+.filter-btn {
+  padding: var(--spacing-sm) var(--spacing-lg);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all var(--transition-fast);
+}
+
+.filter-btn:hover {
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border-color: var(--accent-green);
+}
+
+.filter-btn.active {
+  background: linear-gradient(135deg, rgba(0, 255, 136, 0.2), rgba(0, 212, 255, 0.1));
+  border-color: var(--accent-green);
+  color: var(--accent-green);
+}
+
+/* Difficulty sections */
+.difficulty-section {
+  margin-bottom: var(--spacing-2xl);
+}
+
+.difficulty-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: var(--spacing-lg);
+  padding-left: var(--spacing-sm);
+  border-left: 3px solid currentColor;
+}
+
+.challenges-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--spacing-lg);
+}
+
+/* Challenge cards */
+.challenge-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  text-decoration: none;
+  color: inherit;
+  transition: all var(--transition-normal);
+  position: relative;
+  overflow: hidden;
+}
+
+.challenge-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--accent-green), var(--accent-cyan));
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+}
+
+.challenge-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--accent-green);
+  box-shadow: 0 8px 32px rgba(0, 255, 136, 0.1);
+}
+
+.challenge-card:hover::before {
+  opacity: 1;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-sm);
+}
+
+.challenge-number {
+  font-family: 'Fira Code', monospace;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+}
+
+.difficulty-badge {
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--bg-primary);
+}
+
+.challenge-name {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: var(--spacing-sm);
+  color: var(--text-primary);
+}
+
+.challenge-description {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  margin-bottom: var(--spacing-md);
+}
+
+.card-footer {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.play-hint {
+  color: var(--accent-green);
+  font-size: 0.875rem;
+  font-weight: 500;
+  opacity: 0;
+  transform: translateX(-8px);
+  transition: all var(--transition-fast);
+}
+
+.challenge-card:hover .play-hint {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.quick-links {
+  display: flex;
+  justify-content: center;
+  margin-top: var(--spacing-2xl);
+}
+
+.link-btn {
+  padding: var(--spacing-md) var(--spacing-xl);
+  background: linear-gradient(135deg, var(--accent-purple), var(--accent-pink));
+  border: none;
+  border-radius: var(--radius-md);
+  color: white;
+  text-decoration: none;
+  font-weight: 600;
+  transition: all var(--transition-fast);
+}
+
+.link-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(168, 85, 247, 0.4);
+}
+
+/* ===== CHALLENGE VIEW ===== */
+.challenge-view {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.challenge-view-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-md) var(--spacing-lg);
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.back-btn,
+.leaderboard-link {
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-size: 0.9rem;
+  transition: color var(--transition-fast);
+}
+
+.back-btn:hover,
+.leaderboard-link:hover {
+  color: var(--accent-green);
+}
+
+.challenge-info {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.challenge-info h1 {
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.challenge-id {
+  color: var(--text-muted);
+  font-family: 'Fira Code', monospace;
+  margin-right: var(--spacing-sm);
+}
+
+.difficulty-tag {
+  padding: 2px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.difficulty-tag.easy { background: var(--easy); color: var(--bg-primary); }
+.difficulty-tag.medium { background: var(--medium); color: var(--bg-primary); }
+.difficulty-tag.hard { background: var(--hard); color: var(--bg-primary); }
+
+.instructions-panel {
+  padding: var(--spacing-md) var(--spacing-lg);
+  background: var(--bg-tertiary);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.instructions-panel h3 {
+  font-size: 0.875rem;
+  color: var(--accent-cyan);
+  margin-bottom: var(--spacing-xs);
+}
+
+.instructions-panel p {
+  color: var(--text-primary);
+  font-size: 1rem;
+}
+
+.editor-container {
+  flex: 1;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.stats-bar {
+  padding: var(--spacing-sm) var(--spacing-lg);
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border-color);
+}
+
+.stat-item {
+  font-family: 'Fira Code', monospace;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.stat-item strong {
+  color: var(--accent-green);
+}
+
+/* ===== VIM EDITOR ===== */
+.vim-editor-container {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  background: var(--bg-primary);
+}
+
+.vim-editor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--bg-tertiary);
+  border-bottom: 1px solid var(--border-color);
+  font-family: 'Fira Code', monospace;
+  font-size: 0.8rem;
+}
+
+.vim-mode {
+  color: var(--accent-green);
+}
+
+.mode-indicator {
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  background: rgba(0, 255, 136, 0.1);
+}
+
+.mode-insert {
+  color: var(--accent-cyan);
+  background: rgba(0, 212, 255, 0.1);
+}
+
+.mode-visual {
+  color: var(--accent-purple);
+  background: rgba(168, 85, 247, 0.1);
+}
+
+.vim-stats {
+  display: flex;
+  gap: var(--spacing-lg);
+  color: var(--text-muted);
+}
+
+.vim-editor {
+  flex: 1;
+  min-height: 400px;
+}
+
+.vim-editor .cm-editor {
+  height: 100%;
+}
+
+.vim-editor-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--bg-tertiary);
+  border-top: 1px solid var(--border-color);
+}
+
+.submit-btn {
+  padding: var(--spacing-sm) var(--spacing-xl);
+  background: linear-gradient(135deg, var(--accent-green), var(--accent-green-dim));
+  border: none;
+  border-radius: var(--radius-md);
+  color: var(--bg-primary);
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.submit-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0, 255, 136, 0.4);
+}
+
+.submit-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.vim-help {
+  font-family: 'Fira Code', monospace;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.target-hint {
+  position: absolute;
+  top: 60px;
+  right: var(--spacing-md);
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: rgba(0, 212, 255, 0.1);
+  border: 1px solid var(--accent-cyan);
+  border-radius: var(--radius-md);
+  font-family: 'Fira Code', monospace;
+  font-size: 0.875rem;
+  color: var(--accent-cyan);
+}
+
+.hint-label {
+  color: var(--text-muted);
+}
+
+/* ===== RESULT PANEL ===== */
+.result-panel {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10, 10, 15, 0.95);
+  backdrop-filter: blur(8px);
+  z-index: 100;
+  gap: var(--spacing-lg);
+}
+
+.result-panel.success h2 {
+  color: var(--accent-green);
+  font-size: 2rem;
+}
+
+.result-panel.error h2 {
+  color: var(--hard);
+  font-size: 2rem;
+}
+
+.result-stats {
+  display: flex;
+  gap: var(--spacing-2xl);
+}
+
+.stat {
+  text-align: center;
+}
+
+.stat-value {
+  display: block;
+  font-size: 2.5rem;
+  font-weight: 700;
+  font-family: 'Fira Code', monospace;
+  color: var(--accent-cyan);
+}
+
+.stat-label {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.result-actions {
+  display: flex;
+  gap: var(--spacing-md);
+  margin-top: var(--spacing-lg);
+}
+
+.retry-btn,
+.view-leaderboard-btn,
+.next-challenge-btn {
+  padding: var(--spacing-sm) var(--spacing-lg);
+  border: none;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all var(--transition-fast);
+}
+
+.retry-btn {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+}
+
+.retry-btn:hover {
+  border-color: var(--accent-green);
+}
+
+.view-leaderboard-btn {
+  background: linear-gradient(135deg, var(--accent-purple), var(--accent-pink));
+  color: white;
+}
+
+.next-challenge-btn {
+  background: linear-gradient(135deg, var(--accent-green), var(--accent-cyan));
+  color: var(--bg-primary);
+}
+
+.error-message {
+  color: var(--hard);
+  font-family: 'Fira Code', monospace;
+  background: rgba(248, 113, 113, 0.1);
+  padding: var(--spacing-md);
+  border-radius: var(--radius-md);
+  max-width: 400px;
+  text-align: center;
+}
+
+/* ===== NAME MODAL ===== */
+.name-modal {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10, 10, 15, 0.9);
+  backdrop-filter: blur(8px);
+  z-index: 200;
+}
+
+.name-modal-content {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-xl);
+  text-align: center;
+  min-width: 300px;
+}
+
+.name-modal-content h3 {
+  margin-bottom: var(--spacing-lg);
+  color: var(--accent-green);
+}
+
+.name-modal-content form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.name-modal-content input {
+  padding: var(--spacing-md);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: 1rem;
+  text-align: center;
+}
+
+.name-modal-content input:focus {
+  outline: none;
+  border-color: var(--accent-green);
+}
+
+.name-modal-content button {
+  padding: var(--spacing-sm) var(--spacing-lg);
+  border: none;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.name-modal-content button[type="submit"] {
+  background: linear-gradient(135deg, var(--accent-green), var(--accent-cyan));
+  color: var(--bg-primary);
+}
+
+.name-modal-content button[type="button"] {
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+}
+
+/* ===== SUBMITTING OVERLAY ===== */
+.submitting-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10, 10, 15, 0.9);
+  z-index: 150;
+  gap: var(--spacing-md);
+}
+
+/* ===== LEADERBOARD ===== */
+.leaderboard-page {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: var(--spacing-2xl) var(--spacing-lg);
+}
+
+.leaderboard-header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+  margin-bottom: var(--spacing-xl);
+}
+
+.leaderboard-header h1 {
+  text-align: center;
+  font-size: 2.5rem;
+  background: linear-gradient(135deg, var(--accent-purple), var(--accent-pink));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.challenge-filter {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.challenge-filter label {
+  color: var(--text-secondary);
+}
+
+.challenge-filter select {
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.challenge-filter select:focus {
+  outline: none;
+  border-color: var(--accent-green);
+}
+
+.leaderboard-table-container {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.leaderboard-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.leaderboard-table th {
+  background: var(--bg-tertiary);
+  padding: var(--spacing-md);
+  text-align: left;
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.leaderboard-table td {
+  padding: var(--spacing-md);
+  border-top: 1px solid var(--border-color);
+}
+
+.leaderboard-table tr:hover td {
+  background: rgba(0, 255, 136, 0.05);
+}
+
+.leaderboard-table tr.top-1 td {
+  background: rgba(255, 215, 0, 0.1);
+}
+
+.leaderboard-table tr.top-2 td {
+  background: rgba(192, 192, 192, 0.1);
+}
+
+.leaderboard-table tr.top-3 td {
+  background: rgba(205, 127, 50, 0.1);
+}
+
+.rank-col { width: 60px; text-align: center; }
+.player-col { font-weight: 500; }
+.challenge-col a {
+  color: var(--accent-cyan);
+  text-decoration: none;
+}
+.challenge-col a:hover {
+  text-decoration: underline;
+}
+.time-col {
+  font-family: 'Fira Code', monospace;
+  color: var(--accent-green);
+}
+.keystrokes-col {
+  font-family: 'Fira Code', monospace;
+  color: var(--text-secondary);
+}
+.date-col {
+  color: var(--text-muted);
+  font-size: 0.875rem;
+}
+
+.empty-leaderboard {
+  text-align: center;
+  padding: var(--spacing-2xl);
+  color: var(--text-secondary);
+}
+
+.empty-leaderboard .start-btn {
+  display: inline-block;
+  margin-top: var(--spacing-lg);
+  padding: var(--spacing-md) var(--spacing-xl);
+  background: linear-gradient(135deg, var(--accent-green), var(--accent-cyan));
+  color: var(--bg-primary);
+  text-decoration: none;
+  font-weight: 600;
+  border-radius: var(--radius-md);
+}
+
+.leaderboard-footer {
+  text-align: center;
+  margin-top: var(--spacing-lg);
+}
+
+.scoring-info {
+  color: var(--text-muted);
+  font-size: 0.875rem;
+}
+
+.error-banner {
+  background: rgba(248, 113, 113, 0.1);
+  border: 1px solid var(--hard);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-lg);
+}
+
+.error-banner p {
+  color: var(--hard);
+}
+
+.error-banner button {
+  padding: var(--spacing-xs) var(--spacing-md);
+  background: var(--hard);
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 768px) {
+  .challenge-header h1 {
+    font-size: 2.5rem;
+  }
+  
+  .challenges-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .filter-bar {
+    flex-direction: column;
+  }
+  
+  .filter-btn {
+    width: 100%;
+  }
+  
+  .result-stats {
+    flex-direction: column;
+    gap: var(--spacing-md);
+  }
+  
+  .result-actions {
+    flex-direction: column;
+  }
+  
+  .leaderboard-table {
+    font-size: 0.875rem;
+  }
+  
+  .leaderboard-table th,
+  .leaderboard-table td {
+    padding: var(--spacing-sm);
+  }
+  
+  .date-col {
+    display: none;
+  }
+}

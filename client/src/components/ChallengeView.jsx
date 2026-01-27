@@ -1,0 +1,267 @@
+import { useState, useEffect, useCallback } from 'react';
+import { useParams, useNavigate, Link } from 'react-router-dom';
+import VimEditor from './VimEditor';
+
+const API_URL = 'http://localhost:3001/api';
+
+function ChallengeView() {
+    const { id } = useParams();
+    const navigate = useNavigate();
+
+    const [session, setSession] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [submitting, setSubmitting] = useState(false);
+    const [result, setResult] = useState(null);
+    const [keystrokeCount, setKeystrokeCount] = useState(0);
+    const [playerName, setPlayerName] = useState(() =>
+        localStorage.getItem('vimgolf_player_name') || ''
+    );
+    const [showNameInput, setShowNameInput] = useState(false);
+
+    useEffect(() => {
+        startChallenge();
+    }, [id]);
+
+    async function startChallenge() {
+        setLoading(true);
+        setError(null);
+        setResult(null);
+        setKeystrokeCount(0);
+
+        try {
+            const response = await fetch(`${API_URL}/challenges/${id}/start`, {
+                method: 'POST',
+            });
+
+            if (!response.ok) throw new Error('Failed to start challenge');
+
+            const data = await response.json();
+            setSession(data);
+        } catch (err) {
+            setError(err.message);
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    const handleKeystroke = useCallback((keystroke, count) => {
+        setKeystrokeCount(count);
+    }, []);
+
+    const handleSubmit = useCallback(async (data) => {
+        if (!session) return;
+
+        // Check if we have a player name
+        if (!playerName.trim()) {
+            setShowNameInput(true);
+            // Store the data for later submission
+            window._pendingSubmission = data;
+            return;
+        }
+
+        await submitScore(data, playerName);
+    }, [session, playerName]);
+
+    async function submitScore(data, name) {
+        setSubmitting(true);
+        setError(null);
+
+        try {
+            const response = await fetch(`${API_URL}/leaderboard/submit`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    token: session.token,
+                    playerName: name,
+                    content: data.content,
+                    keystrokes: data.keystrokes,
+                    cursorPosition: data.cursorPosition,
+                }),
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.reason || result.error || 'Submission failed');
+            }
+
+            // Save player name for next time
+            localStorage.setItem('vimgolf_player_name', name);
+
+            setResult({
+                success: true,
+                timeMs: result.timeMs,
+                keystrokes: result.keystrokes,
+                rank: result.rank,
+            });
+        } catch (err) {
+            setError(err.message);
+            setResult({ success: false, error: err.message });
+        } finally {
+            setSubmitting(false);
+            setShowNameInput(false);
+        }
+    }
+
+    function handleNameSubmit(e) {
+        e.preventDefault();
+        if (playerName.trim() && window._pendingSubmission) {
+            submitScore(window._pendingSubmission, playerName.trim());
+            window._pendingSubmission = null;
+        }
+    }
+
+    if (loading) {
+        return (
+            <div className="loading-container">
+                <div className="loading-spinner"></div>
+                <p>Loading challenge...</p>
+            </div>
+        );
+    }
+
+    if (error && !session) {
+        return (
+            <div className="error-container">
+                <h2>⚠️ Error</h2>
+                <p>{error}</p>
+                <button onClick={startChallenge}>Retry</button>
+                <Link to="/" className="back-link">← Back to challenges</Link>
+            </div>
+        );
+    }
+
+    const challenge = session?.challenge;
+
+    return (
+        <div className="challenge-view">
+            <div className="challenge-view-header">
+                <Link to="/" className="back-btn">← Back</Link>
+                <div className="challenge-info">
+                    <h1>
+                        <span className="challenge-id">#{challenge?.id}</span>
+                        {challenge?.name}
+                    </h1>
+                    <span className={`difficulty-tag ${challenge?.difficulty}`}>
+                        {challenge?.difficulty}
+                    </span>
+                </div>
+                <Link to="/leaderboard" className="leaderboard-link">🏆 Leaderboard</Link>
+            </div>
+
+            <div className="instructions-panel">
+                <h3>📋 Instructions</h3>
+                <p>{challenge?.instructions}</p>
+            </div>
+
+            <div className="editor-container">
+                {showNameInput && (
+                    <div className="name-modal">
+                        <div className="name-modal-content">
+                            <h3>Enter Your Name</h3>
+                            <form onSubmit={handleNameSubmit}>
+                                <input
+                                    type="text"
+                                    value={playerName}
+                                    onChange={(e) => setPlayerName(e.target.value)}
+                                    placeholder="Your name"
+                                    maxLength={50}
+                                    autoFocus
+                                />
+                                <button type="submit" disabled={!playerName.trim()}>
+                                    Submit Score
+                                </button>
+                                <button type="button" onClick={() => setShowNameInput(false)}>
+                                    Cancel
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                )}
+
+                {result && (
+                    <div className={`result-panel ${result.success ? 'success' : 'error'}`}>
+                        {result.success ? (
+                            <>
+                                <h2>🎉 Challenge Complete!</h2>
+                                <div className="result-stats">
+                                    <div className="stat">
+                                        <span className="stat-value">{formatTime(result.timeMs)}</span>
+                                        <span className="stat-label">Time</span>
+                                    </div>
+                                    <div className="stat">
+                                        <span className="stat-value">{result.keystrokes}</span>
+                                        <span className="stat-label">Keystrokes</span>
+                                    </div>
+                                    <div className="stat">
+                                        <span className="stat-value">#{result.rank}</span>
+                                        <span className="stat-label">Rank</span>
+                                    </div>
+                                </div>
+                                <div className="result-actions">
+                                    <button onClick={startChallenge} className="retry-btn">
+                                        🔄 Try Again
+                                    </button>
+                                    <Link to="/leaderboard" className="view-leaderboard-btn">
+                                        🏆 View Leaderboard
+                                    </Link>
+                                    <Link to="/" className="next-challenge-btn">
+                                        ➡️ Next Challenge
+                                    </Link>
+                                </div>
+                            </>
+                        ) : (
+                            <>
+                                <h2>❌ Submission Failed</h2>
+                                <p className="error-message">{result.error}</p>
+                                <button onClick={startChallenge} className="retry-btn">
+                                    🔄 Try Again
+                                </button>
+                            </>
+                        )}
+                    </div>
+                )}
+
+                {!result && (
+                    <VimEditor
+                        initialContent={challenge?.initialContent || ''}
+                        targetContent={challenge?.targetContent}
+                        highlightWord={challenge?.highlightWord}
+                        targetLine={challenge?.targetLine}
+                        onKeystroke={handleKeystroke}
+                        onSubmit={handleSubmit}
+                        disabled={submitting}
+                    />
+                )}
+            </div>
+
+            {submitting && (
+                <div className="submitting-overlay">
+                    <div className="loading-spinner"></div>
+                    <p>Validating submission...</p>
+                </div>
+            )}
+
+            <div className="stats-bar">
+                <span className="stat-item">
+                    ⌨️ Keystrokes: <strong>{keystrokeCount}</strong>
+                </span>
+            </div>
+        </div>
+    );
+}
+
+function formatTime(ms) {
+    const seconds = Math.floor(ms / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    const remainingMs = ms % 1000;
+
+    if (minutes > 0) {
+        return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}.${Math.floor(remainingMs / 100)}`;
+    }
+    return `${seconds}.${Math.floor(remainingMs / 100)}s`;
+}
+
+export default ChallengeView;
