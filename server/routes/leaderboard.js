@@ -43,8 +43,8 @@ router.post('/submit', (req, res) => {
         }
 
         // Check if score was already submitted for this session
-        const existingScore = db.prepare('SELECT id FROM scores WHERE session_id = ?').get(sessionId);
-        if (existingScore) {
+        const existingSessionScore = db.prepare('SELECT id FROM scores WHERE session_id = ?').get(sessionId);
+        if (existingSessionScore) {
             return res.status(409).json({ error: 'Score already submitted for this session' });
         }
 
@@ -111,34 +111,67 @@ router.post('/submit', (req, res) => {
             return res.status(400).json({ error: 'Invalid player name' });
         }
 
-        // Save score
-        const stmt = db.prepare(`
-      INSERT INTO scores (session_id, challenge_id, player_name, time_ms, keystrokes, keystroke_data)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `);
+        // --- NEW: Calculate score and check for improvement ---
+        const challengeDef = getChallengeList().find(c => c.id === challengeId);
+        const timePar = challengeDef?.timePar || 0;
+        const keyPressesPar = challengeDef?.keyPressesPar || 0;
 
-        const result = stmt.run(
-            sessionId,
-            challengeId,
-            sanitizedName,
-            timeMs,
-            keystrokeCount,
-            JSON.stringify(keystrokes)
-        );
+        // Formula: 100 + (keyPressesPar - keyPresses) + ((timePar - time_ms) / 1000)
+        // Using seconds for meaningful time difference
+        const calculateScore = (tMs, kP) => {
+            return 100 + (keyPressesPar - kP) + Math.round((timePar - tMs) / 1000);
+        };
 
-        // Get rank for this score
-        const rank = db.prepare(`
-      SELECT COUNT(*) + 1 as rank 
-      FROM scores 
-      WHERE challenge_id = ? AND time_ms < ?
-    `).get(challengeId, timeMs);
+        const newScore = calculateScore(timeMs, keystrokeCount);
+
+        // Fetch existing scores for this player on this challenge
+        const existingScores = db.prepare(`
+            SELECT time_ms, keystrokes
+            FROM scores
+            WHERE challenge_id = ? AND player_name = ?
+        `).all(challengeId, sanitizedName);
+
+        // Find max existing score
+        let maxExistingScore = -Infinity;
+        existingScores.forEach(s => {
+            const sScore = calculateScore(s.time_ms, s.keystrokes);
+            if (sScore > maxExistingScore) maxExistingScore = sScore;
+        });
+
+        // Only insert if new score is better
+        let result = { lastInsertRowid: null };
+        let isNewBest = false;
+
+        if (existingScores.length === 0 || newScore > maxExistingScore) {
+            const stmt = db.prepare(`
+                INSERT INTO scores (session_id, challenge_id, player_name, time_ms, keystrokes, keystroke_data)
+                VALUES (?, ?, ?, ?, ?, ?)
+            `);
+
+            result = stmt.run(
+                sessionId,
+                challengeId,
+                sanitizedName,
+                timeMs,
+                keystrokeCount,
+                JSON.stringify(keystrokes)
+            );
+            isNewBest = true;
+        } else {
+            console.log(`Score ${newScore} not better than existing best ${maxExistingScore}. Not saving.`);
+        }
+
+        // Get rank (based on score now ideally, but maintaining compatibility with simple count for now)
+        //rank is strictly cosmetic here if we just inserted.
+        // If we didn't insert, rank is effectively "what it would be" or we just return null.
 
         res.json({
             success: true,
             scoreId: result.lastInsertRowid,
             timeMs,
             keystrokes: keystrokeCount,
-            rank: rank.rank
+            score: newScore,
+            isNewBest
         });
 
     } catch (error) {
@@ -151,37 +184,148 @@ router.post('/submit', (req, res) => {
 router.get('/', (req, res) => {
     try {
         const { challengeId, limit = 50 } = req.query;
+        const challenges = getChallengeList();
 
-        let query = `
-      SELECT 
-        s.id,
-        s.challenge_id,
-        s.player_name,
-        s.time_ms,
-        s.keystrokes,
-        s.submitted_at
-      FROM scores s
-    `;
+        // Map of challengeId -> { timePar, keyPressesPar } for quick lookup
+        const challengePars = {};
+        challenges.forEach(c => {
+            challengePars[c.id] = {
+                timePar: c.timePar || 0,
+                keyPressesPar: c.keyPressesPar || 0
+            };
+        });
 
-        const params = [];
+        // Helper to calculate score for a single entry
+        const calculateScore = (timeMs, keystrokes, challengeId) => {
+            const par = challengePars[challengeId];
+            if (!par) return 0; // Should not happen if challenge exists
+
+            // Formula: 100 + (keyPressesPar - keyPresses) + ((timePar - time) / 1000)
+            return 100 + (par.keyPressesPar - keystrokes) + Math.round((par.timePar - timeMs) / 1000);
+        };
 
         if (challengeId) {
-            query += ' WHERE s.challenge_id = ?';
-            params.push(parseInt(challengeId));
+            // SINGLE CHALLENGE VIEW
+            const cId = parseInt(challengeId);
+
+            let query = `
+                SELECT 
+                    s.id,
+                    s.challenge_id,
+                    s.player_name,
+                    s.time_ms,
+                    s.keystrokes,
+                    s.submitted_at
+                FROM scores s
+                WHERE s.challenge_id = ?
+                ORDER BY s.time_ms ASC 
+            `;
+            // We fetch all then sort by score in JS to be consistent with the formula, 
+            // or we just return them. The prompt says "introduce a column called score".
+            // Since score depends on multiple factors, sorting by time_ms might not be strictly "best score".
+            // However, usually Vimgolf is time or keystroke based.
+            // Let's fetch all for this challenge, calculate score, then sort by score DESC, then limit.
+
+            const scores = db.prepare(query).all(cId);
+
+            const scoredScores = scores.map(score => {
+                const calculatedScore = calculateScore(score.time_ms, score.keystrokes, score.challenge_id);
+                return {
+                    ...score,
+                    score: calculatedScore
+                };
+            });
+
+            // Iterate to find the best score per player? 
+            // Usually leaderboard shows best attempt per player or all attempts?
+            // "Right now, the high score either shows a selected challenge, or 'All Challenges'."
+            // Standard leaderboard usually collapses to one entry per player.
+            // Let's dedup by player here too for consistency, keeping their BEST score.
+
+            const bestPerPlayer = {};
+            scoredScores.forEach(s => {
+                if (!bestPerPlayer[s.player_name] || s.score > bestPerPlayer[s.player_name].score) {
+                    bestPerPlayer[s.player_name] = s;
+                }
+            });
+
+            const sortedScores = Object.values(bestPerPlayer)
+                .sort((a, b) => b.score - a.score)
+                .slice(0, parseInt(limit));
+
+            const rankedScores = sortedScores.map((score, index) => ({
+                ...score,
+                rank: index + 1
+            }));
+
+            res.json(rankedScores);
+        } else {
+            // ALL CHALLENGES VIEW (AGGREGATED)
+            const query = `
+                SELECT 
+                    s.id,
+                    s.challenge_id,
+                    s.player_name,
+                    s.time_ms,
+                    s.keystrokes
+                FROM scores s
+            `;
+            const allScores = db.prepare(query).all();
+
+            // 1. Group by Player + Challenge -> find BEST score for each pair
+            const bestAttempts = {}; // Key: "playerId_challengeId" -> score object
+
+            allScores.forEach(score => {
+                // Ignore scores for challenges that don't exist in our list (e.g. old ones)
+                if (!challengePars[score.challenge_id]) return;
+
+                const calculatedScore = calculateScore(score.time_ms, score.keystrokes, score.challenge_id);
+                const key = `${score.player_name}_${score.challenge_id}`; // player_name is unique identifier currently
+
+                if (!bestAttempts[key] || calculatedScore > bestAttempts[key].score) {
+                    bestAttempts[key] = {
+                        player_name: score.player_name,
+                        challenge_id: score.challenge_id,
+                        time_ms: score.time_ms,
+                        keystrokes: score.keystrokes,
+                        score: calculatedScore
+                    };
+                }
+            });
+
+            // 2. Aggregate per player
+            const playerStats = {}; // Key: "player_name" -> { totalTime, totalKeys, totalScore, challengesCompleted }
+
+            Object.values(bestAttempts).forEach(attempt => {
+                const name = attempt.player_name;
+                if (!playerStats[name]) {
+                    playerStats[name] = {
+                        player_name: name,
+                        time_ms: 0, // Sum of times
+                        keystrokes: 0, // Sum of keystrokes
+                        score: 0, // Sum of scores
+                        challenges_completed: 0
+                    };
+                }
+                playerStats[name].time_ms += attempt.time_ms;
+                playerStats[name].keystrokes += attempt.keystrokes;
+                playerStats[name].score += attempt.score;
+                playerStats[name].challenges_completed += 1;
+            });
+
+            // 3. Convert to array and sort
+            const leaderboard = Object.values(playerStats)
+                .sort((a, b) => b.score - a.score)
+                .slice(0, parseInt(limit));
+
+            // 4. Add rank
+            const rankedLeaderboard = leaderboard.map((entry, index) => ({
+                ...entry,
+                rank: index + 1
+            }));
+
+            res.json(rankedLeaderboard);
         }
-
-        query += ' ORDER BY s.time_ms ASC LIMIT ?';
-        params.push(parseInt(limit));
-
-        const scores = db.prepare(query).all(...params);
-
-        // Add rank to each score
-        const rankedScores = scores.map((score, index) => ({
-            ...score,
-            rank: index + 1
-        }));
-
-        res.json(rankedScores);
 
     } catch (error) {
         console.error('Error fetching leaderboard:', error);

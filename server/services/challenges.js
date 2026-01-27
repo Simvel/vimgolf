@@ -113,7 +113,9 @@ const challenges = [
                 checkType: 'cursor_line',
                 targetValue: targetLine
             };
-        }
+        },
+        timePar: 10000,
+        keyPressesPar: 4
     },
     {
         id: 2,
@@ -144,7 +146,9 @@ const challenges = [
                 checkType: 'cursor_word',
                 targetValue: targetWord
             };
-        }
+        },
+        timePar: 15000,
+        keyPressesPar: 8
     },
     {
         id: 3,
@@ -162,7 +166,9 @@ const challenges = [
                 checkType: 'cursor_eol',
                 targetValue: targetLine
             };
-        }
+        },
+        timePar: 10000,
+        keyPressesPar: 4
     },
     {
         id: 4,
@@ -196,7 +202,9 @@ const challenges = [
                 highlightWord: targetWord,
                 checkType: 'content_match'
             };
-        }
+        },
+        timePar: 15000,
+        keyPressesPar: 6
     },
     {
         id: 5,
@@ -218,7 +226,9 @@ const challenges = [
                 checkType: 'cursor_bol',
                 targetValue: targetLine
             };
-        }
+        },
+        timePar: 10000,
+        keyPressesPar: 4
     },
     {
         id: 6,
@@ -236,7 +246,9 @@ const challenges = [
                 checkType: 'cursor_line',
                 targetValue: targetLine
             };
-        }
+        },
+        timePar: 10000,
+        keyPressesPar: 4
     },
     {
         id: 7,
@@ -264,7 +276,9 @@ const challenges = [
                 targetLine: lineNum,
                 checkType: 'content_match'
             };
-        }
+        },
+        timePar: 12000,
+        keyPressesPar: 6
     },
     {
         id: 8,
@@ -291,7 +305,9 @@ const challenges = [
                 targetLine,
                 checkType: 'content_match'
             };
-        }
+        },
+        timePar: 10000,
+        keyPressesPar: 3
     },
 
     // ===== MEDIUM CHALLENGES (9-13) =====
@@ -314,7 +330,9 @@ const challenges = [
                 checkType: 'cursor_paragraph',
                 targetValue: targetParagraph
             };
-        }
+        },
+        timePar: 15000,
+        keyPressesPar: 5
     },
     {
         id: 10,
@@ -342,7 +360,9 @@ const challenges = [
                 instructions: `Delete lines ${line1} and ${line2}. They are not adjacent!`,
                 checkType: 'content_match'
             };
-        }
+        },
+        timePar: 18000,
+        keyPressesPar: 7
     },
     {
         id: 11,
@@ -373,7 +393,9 @@ const challenges = [
                 instructions: `Copy line ${sourceLine} and paste it after line ${destLine}. Use 'yy' and 'p'.`,
                 checkType: 'content_match'
             };
-        }
+        },
+        timePar: 20000,
+        keyPressesPar: 8
     },
     {
         id: 12,
@@ -404,7 +426,9 @@ const challenges = [
                 checkType: 'content_match',
                 highlightWord: oldWord
             };
-        }
+        },
+        timePar: 35000,
+        keyPressesPar: 10
     },
     {
         id: 13,
@@ -426,7 +450,9 @@ const challenges = [
                 instructions: `Delete paragraph ${targetParagraph + 1} entirely. Use 'dap' (delete a paragraph).`,
                 checkType: 'content_match'
             };
-        }
+        },
+        timePar: 20000,
+        keyPressesPar: 5
     },
 
     // ===== HARD CHALLENGES (14-16) =====
@@ -455,7 +481,9 @@ const challenges = [
                 endLine,
                 checkType: 'content_match'
             };
-        }
+        },
+        timePar: 25000,
+        keyPressesPar: 8
     },
     {
         id: 15,
@@ -480,7 +508,9 @@ const challenges = [
                 highlightWord: targetWords,
                 checkType: 'content_match'
             };
-        }
+        },
+        timePar: 35000,
+        keyPressesPar: 10
     },
     {
         id: 16,
@@ -506,7 +536,9 @@ const challenges = [
                 instructions: `1) Delete the TODO comment line. 2) Rename all occurrences of "${changeWord}" to "${newWord}".`,
                 checkType: 'content_match'
             };
-        }
+        },
+        timePar: 50000,
+        keyPressesPar: 15
     }
 ];
 
@@ -515,7 +547,9 @@ export function getChallengeList() {
         id: c.id,
         name: c.name,
         difficulty: c.difficulty,
-        description: c.description
+        description: c.description,
+        timePar: c.timePar,
+        keyPressesPar: c.keyPressesPar
     }));
 }
 
@@ -529,6 +563,8 @@ export function generateChallenge(challengeId, seed) {
         name: challenge.name,
         difficulty: challenge.difficulty,
         description: challenge.description,
+        timePar: challenge.timePar,
+        keyPressesPar: challenge.keyPressesPar,
         ...generated
     };
 }

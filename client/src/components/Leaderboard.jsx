@@ -106,17 +106,18 @@ function Leaderboard() {
                             <tr>
                                 <th className="rank-col">Rank</th>
                                 <th className="player-col">Player</th>
-                                <th className="challenge-col">Challenge</th>
+                                <th className="score-col">Score</th>
+                                {selectedChallenge !== 'all' && <th className="challenge-col">Challenge</th>}
                                 <th className="time-col">Time</th>
                                 <th className="keystrokes-col">Keystrokes</th>
-                                <th className="date-col">Date</th>
+                                {selectedChallenge !== 'all' && <th className="date-col">Date</th>}
                             </tr>
                         </thead>
                         <tbody>
                             {scores.map((score, index) => {
                                 const challenge = challenges.find(c => c.id === score.challenge_id);
                                 return (
-                                    <tr key={score.id} className={index < 3 ? `top-${index + 1}` : ''}>
+                                    <tr key={score.id || index} className={index < 3 ? `top-${index + 1}` : ''}>
                                         <td className="rank-col">
                                             {index === 0 && '🥇'}
                                             {index === 1 && '🥈'}
@@ -124,14 +125,17 @@ function Leaderboard() {
                                             {index > 2 && `#${index + 1}`}
                                         </td>
                                         <td className="player-col">{score.player_name}</td>
-                                        <td className="challenge-col">
-                                            <Link to={`/challenge/${score.challenge_id}`}>
-                                                #{score.challenge_id} {challenge?.name || 'Unknown'}
-                                            </Link>
-                                        </td>
+                                        <td className="score-col">{score.score?.toLocaleString()}</td>
+                                        {selectedChallenge !== 'all' && (
+                                            <td className="challenge-col">
+                                                <Link to={`/challenge/${score.challenge_id}`}>
+                                                    #{score.challenge_id} {challenge?.name || 'Unknown'}
+                                                </Link>
+                                            </td>
+                                        )}
                                         <td className="time-col">{formatTime(score.time_ms)}</td>
                                         <td className="keystrokes-col">{score.keystrokes}</td>
-                                        <td className="date-col">{formatDate(score.submitted_at)}</td>
+                                        {selectedChallenge !== 'all' && <td className="date-col">{formatDate(score.submitted_at)}</td>}
                                     </tr>
                                 );
                             })}
@@ -142,7 +146,9 @@ function Leaderboard() {
 
             <div className="leaderboard-footer">
                 <p className="scoring-info">
-                    🎯 Scores ranked by time. Lower is better!
+                    {selectedChallenge === 'all'
+                        ? "🎯 Scores aggregated across all challenges. Higher is better!"
+                        : "🎯 Scores ranked by highest score (efficiency & speed)."}
                 </p>
             </div>
         </div>
