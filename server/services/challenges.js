@@ -135,6 +135,8 @@ const challenges = [
                     step.targetLine = targetLine;
                     step.checkType = 'cursor_line';
                     step.targetValue = targetLine;
+                    step.highlightWord = null;
+                    step.highlightColumn = null;
                 } else if (type === 1) { // Word navigation
                     // Find a line with "data" or "SECTION"
                     let searchLine = randomInRange(stepSeed, 10, 90);
@@ -157,6 +159,8 @@ const challenges = [
                     step.targetLine = targetLine;
                     step.checkType = 'cursor_eol';
                     step.targetValue = targetLine;
+                    step.highlightWord = null;
+                    step.highlightColumn = null;
                 }
                 steps.push(step);
             }
