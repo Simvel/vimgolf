@@ -19,7 +19,7 @@ export function validateContent(submitted, target, checkType) {
 /**
  * Validate cursor position for navigation challenges
  */
-export function validateCursorPosition(cursorPosition, content, checkType, targetValue, targetWord) {
+export function validateCursorPosition(cursorPosition, content, checkType, targetValue, targetWord, targetLineArg) {
     const { line, col } = cursorPosition;
     const lines = content.split('\n');
 
@@ -45,6 +45,9 @@ export function validateCursorPosition(cursorPosition, content, checkType, targe
         }
 
         case 'cursor_word': {
+            // Strict line check: cursor must be on the target line if specified
+            if (targetLineArg && line !== targetLineArg) return false;
+
             if (!targetWord) return false;
             const lineContent = lines[line - 1] || '';
             const colIndex = col - 1; // 0-indexed

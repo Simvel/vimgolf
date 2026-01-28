@@ -132,7 +132,7 @@ function VimEditor({
             // console.log('Checking completion:', { checkType, cursorPos, targetLine, targetValue });
 
             if (checkType && (checkType.startsWith('cursor_'))) {
-                isComplete = validateCursorPosition(cursorPos, content, checkType, targetValue, targetWord);
+                isComplete = validateCursorPosition(cursorPos, content, checkType, targetValue, targetWord, targetLine);
             } else {
                 isComplete = validateContent(content, targetContent, checkType);
             }
@@ -246,6 +246,10 @@ function VimEditor({
         }
 
         // For deletion/edit challenges: compute diff and highlight differences
+        // Pre-calculate targetLines and isLineDeletion
+        let isLineDeletion = false;
+        let targetLines = [];
+
         if (targetContent && initialContent !== targetContent) {
             const initialLines = initialContent.split('\n');
             const targetLines = targetContent.split('\n');
@@ -308,15 +312,9 @@ function VimEditor({
             const text = initialContent;
 
             while ((match = regex.exec(text)) !== null) {
-                // If specific column is provided (for single-line targets usually)
+                // If specific column is provided (preferred)
                 if (targetLine && typeof highlightColumn === 'number') {
-                    // Get the line offset
                     const lineInfo = doc.line(targetLine);
-                    // Check if this match is at the correct line and column
-                    // match.index is absolute. lineInfo.from is start of line.
-                    // highlightColumn is 0-indexed offset from start of line? 
-                    // We assumed it matches `match.index` relative to line start.
-
                     const relativeIndex = match.index - lineInfo.from;
                     if (match.index >= lineInfo.from && match.index < lineInfo.to && relativeIndex === highlightColumn) {
                         const className = highlightType === 'delete' ? 'cm-delete-match'
@@ -328,17 +326,30 @@ function VimEditor({
                         );
                     }
                 }
-                // Fallback: if only targetLine is provided, only highlight on that line
+                // Fallback: if only targetLine is provided
                 else if (targetLine) {
                     const lineInfo = doc.line(targetLine);
-                    if (match.index >= lineInfo.from && match.index < lineInfo.to) {
-                        const className = highlightType === 'delete' ? 'cm-delete-match'
-                            : highlightType === 'change' ? 'cm-change-match'
-                                : 'cm-target-match';
+                    // Check if line is deleted
+                    let isDeleted = false;
+                    if (targetContent) {
+                        const initialLines = initialContent.split('\n');
+                        const targetLines = targetContent.split('\n');
+                        const isLineDeletion = targetLines.length < initialLines.length;
+                        if (isLineDeletion && !targetLines.includes(lineInfo.text)) {
+                            isDeleted = true;
+                        }
+                    }
 
-                        initialDecorations.push(
-                            Decoration.mark({ class: className }).range(match.index, match.index + match[0].length)
-                        );
+                    if (!isDeleted) {
+                        if (match.index >= lineInfo.from && match.index < lineInfo.to) {
+                            const className = highlightType === 'delete' ? 'cm-delete-match'
+                                : highlightType === 'change' ? 'cm-change-match'
+                                    : 'cm-target-match';
+
+                            initialDecorations.push(
+                                Decoration.mark({ class: className }).range(match.index, match.index + match[0].length)
+                            );
+                        }
                     }
                 }
                 // Fallback: global highlight (legacy)
