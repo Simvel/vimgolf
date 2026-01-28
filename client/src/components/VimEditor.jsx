@@ -3,6 +3,7 @@ import { EditorView, keymap, lineNumbers, Decoration } from '@codemirror/view';
 import { EditorState, StateField, StateEffect } from '@codemirror/state';
 import { defaultKeymap } from '@codemirror/commands';
 import { vim, Vim } from '@replit/codemirror-vim';
+import { validateContent, validateCursorPosition } from '../utils/validator';
 
 // Custom theme for the vim editor
 const vimTheme = EditorView.theme({
@@ -85,10 +86,13 @@ function VimEditor({
     targetContent,
     onContentChange,
     onKeystroke,
-    onSubmit,
+    onStepComplete,
     highlightWord,
     targetLine,
     highlightType,
+    checkType,
+    targetValue,
+    targetWord,
     disabled = false
 }) {
     const editorRef = useRef(null);
@@ -115,33 +119,40 @@ function VimEditor({
         }
     }, [onKeystroke]);
 
-    // Handle submit
-    const handleSubmit = useCallback(() => {
-        if (!viewRef.current) return;
+    // Check completion condition
+    useEffect(() => {
+        if (disabled || !viewRef.current) return;
 
-        const content = viewRef.current.state.doc.toString();
-        const keystrokes = keystrokesRef.current;
-        const totalTime = keystrokes.length > 0
-            ? keystrokes[keystrokes.length - 1].timestamp
-            : 0;
+        // Give a small delay to ensure state is updated
+        const timer = setTimeout(() => {
+            const content = viewRef.current.state.doc.toString();
+            let isComplete = false;
 
-        // Get current cursor position for navigation challenge validation
-        const pos = viewRef.current.state.selection.main.head;
-        const lineInfo = viewRef.current.state.doc.lineAt(pos);
-        const cursorPosition = {
-            line: lineInfo.number,
-            col: pos - lineInfo.from + 1
-        };
+            // console.log('Checking completion:', { checkType, cursorPos, targetLine, targetValue });
 
-        onSubmit({
-            content,
-            keystrokes,
-            totalTime,
-            keystrokeCount: keystrokes.length,
-            cursorPosition
-        });
-    }, [onSubmit]);
+            if (checkType && (checkType.startsWith('cursor_'))) {
+                isComplete = validateCursorPosition(cursorPos, content, checkType, targetValue, targetWord);
+            } else {
+                isComplete = validateContent(content, targetContent, checkType);
+            }
 
+            if (isComplete) {
+                const totalTime = keystrokesRef.current.length > 0
+                    ? keystrokesRef.current[keystrokesRef.current.length - 1].timestamp
+                    : 0;
+
+                onStepComplete && onStepComplete({
+                    content,
+                    keystrokes: keystrokesRef.current,
+                    totalTime,
+                    keystrokeCount: keystrokesRef.current.length,
+                    cursorPosition: cursorPos
+                });
+            }
+        }, 50); // Small debounce/delay
+
+        return () => clearTimeout(timer);
+    }, [cursorPos, initialContent, targetContent, checkType, targetValue, targetWord, disabled, onStepComplete]);
 
 
     useEffect(() => {
@@ -160,9 +171,15 @@ function VimEditor({
             // Update cursor position
             const pos = update.state.selection.main.head;
             const line = update.state.doc.lineAt(pos);
-            setCursorPos({
-                line: line.number,
-                col: pos - line.from + 1
+            // Only update state if changed to avoid loops
+            const newLine = line.number;
+            const newCol = pos - line.from + 1;
+
+            setCursorPos(prev => {
+                if (prev.line !== newLine || prev.col !== newCol) {
+                    return { line: newLine, col: newCol };
+                }
+                return prev;
             });
         });
 
@@ -376,6 +393,10 @@ function VimEditor({
 
     // Reset keystrokes when content changes
     useEffect(() => {
+        // Do not reset keystrokes between steps automatically if we want to track total time via backend
+        // But for per-step keystroke counts in UI, maybe reset?
+        // User asked: "remove the keystroke timing validation entirely, and just base total time taken on server timings"
+        // So we can keep tracking keystrokes here just for "keys:" display
         keystrokesRef.current = [];
         startTimeRef.current = null;
         setKeystrokeCount(0);
@@ -414,13 +435,6 @@ function VimEditor({
             )}
 
             <div className="vim-editor-footer">
-                <button
-                    className="submit-btn"
-                    onClick={handleSubmit}
-                    disabled={disabled}
-                >
-                    ✓ Submit Solution
-                </button>
                 <div className="vim-help">
                     <span>:help | ESC = Normal | i = Insert | v = Visual | Macros disabled</span>
                 </div>

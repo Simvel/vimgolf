@@ -26,11 +26,18 @@ router.post('/:id/start', (req, res) => {
         const seed = Date.now() + Math.floor(Math.random() * 10000);
         const sessionId = uuidv4();
 
-        // Generate the challenge with variations
+        // Generate the challenge with variations (returns { steps: [...] })
         const challenge = generateChallenge(challengeId, seed);
         if (!challenge) {
             return res.status(404).json({ error: 'Challenge not found' });
         }
+
+        const steps = challenge.steps || [];
+        if (steps.length === 0) {
+            return res.status(500).json({ error: 'Generated challenge has no steps' });
+        }
+
+        const firstStep = steps[0];
 
         // Generate session token
         const token = generateSessionToken(sessionId, challengeId, seed);
@@ -42,43 +49,76 @@ router.post('/:id/start', (req, res) => {
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `);
 
+        // We store the full steps chain in variation_data
         stmt.run(
             sessionId,
             challengeId,
             seed,
-            challenge.initialContent,
-            challenge.targetContent,
-            JSON.stringify({
-                targetLine: challenge.targetLine,
-                targetWord: challenge.targetWord,
-                highlightWord: challenge.highlightWord,
-                checkType: challenge.checkType,
-                targetValue: challenge.targetValue
-            }),
+            firstStep.initialContent,
+            firstStep.targetContent,
+            JSON.stringify({ steps: steps }),
             expiresAt.toISOString()
         );
 
         res.json({
             sessionId,
             token,
+            totalSteps: steps.length,
+            stepIndex: 0,
             challenge: {
                 id: challenge.id,
                 name: challenge.name,
                 difficulty: challenge.difficulty,
                 description: challenge.description,
-                instructions: challenge.instructions,
-                initialContent: challenge.initialContent,
-                targetContent: challenge.targetContent,
-                highlightWord: challenge.highlightWord,
-                targetLine: challenge.targetLine,
-                highlightType: challenge.highlightType,
-                startLine: challenge.startLine,
-                endLine: challenge.endLine
+                ...firstStep
             }
         });
     } catch (error) {
         console.error('Error starting challenge:', error);
         res.status(500).json({ error: 'Failed to start challenge' });
+    }
+});
+
+// Report progress and get next step
+router.post('/:id/progress', (req, res) => {
+    try {
+        const { token, stepIndex } = req.body;
+
+        // Verify token
+        const sessionData = verifySessionToken(token);
+        if (!sessionData) {
+            return res.status(401).json({ error: 'Invalid session token' });
+        }
+
+        // Fetch session to get steps
+        const stmt = db.prepare('SELECT variation_data FROM sessions WHERE id = ?');
+        const sessionRow = stmt.get(sessionData.sessionId);
+
+        if (!sessionRow) {
+            return res.status(404).json({ error: 'Session not found' });
+        }
+
+        const variationData = JSON.parse(sessionRow.variation_data);
+        const steps = variationData.steps;
+
+        const nextIndex = stepIndex + 1;
+
+        if (nextIndex >= steps.length) {
+            return res.json({ complete: true });
+        }
+
+        const nextStep = steps[nextIndex];
+
+        res.json({
+            complete: false,
+            stepIndex: nextIndex,
+            totalSteps: steps.length,
+            step: nextStep
+        });
+
+    } catch (error) {
+        console.error('Error progressing challenge:', error);
+        res.status(500).json({ error: 'Failed to progress challenge' });
     }
 });
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import VimEditor from './VimEditor';
 
@@ -14,10 +14,19 @@ function ChallengeView() {
     const [submitting, setSubmitting] = useState(false);
     const [result, setResult] = useState(null);
     const [keystrokeCount, setKeystrokeCount] = useState(0);
+    const [stepIndex, setStepIndex] = useState(0);
+    const [totalSteps, setTotalSteps] = useState(0);
+    const [intermission, setIntermission] = useState(false);
     const [playerName, setPlayerName] = useState(() =>
         localStorage.getItem('vimgolf_player_name') || ''
     );
     const [showNameInput, setShowNameInput] = useState(false);
+
+    // We accumulate keystrokes across steps for final submission if needed, 
+    // or just trust the server's time tracking.
+    // The user requirement says "base total time taken on server timings".
+    // But we might want to track keystrokes just for the report.
+    const allKeystrokesRef = useRef([]);
 
     useEffect(() => {
         startChallenge();
@@ -28,6 +37,8 @@ function ChallengeView() {
         setError(null);
         setResult(null);
         setKeystrokeCount(0);
+        setStepIndex(0);
+        allKeystrokesRef.current = [];
 
         try {
             const response = await fetch(`${API_URL}/challenges/${id}/start`, {
@@ -38,6 +49,8 @@ function ChallengeView() {
 
             const data = await response.json();
             setSession(data);
+            setStepIndex(data.stepIndex || 0);
+            setTotalSteps(data.totalSteps || 1);
         } catch (err) {
             setError(err.message);
         } finally {
@@ -46,22 +59,68 @@ function ChallengeView() {
     }
 
     const handleKeystroke = useCallback((keystroke, count) => {
-        setKeystrokeCount(count);
+        setKeystrokeCount(count); // This is just for current step display
     }, []);
 
-    const handleSubmit = useCallback(async (data) => {
-        if (!session) return;
+    const handleStepComplete = useCallback(async (data) => {
+        if (!session || intermission) return;
 
-        // Check if we have a player name
-        if (!playerName.trim()) {
-            setShowNameInput(true);
-            // Store the data for later submission
-            window._pendingSubmission = data;
-            return;
+        // Add to total keystrokes
+        allKeystrokesRef.current = [...allKeystrokesRef.current, ...data.keystrokes];
+
+        // Show intermission
+        setIntermission(true);
+
+        // Short delay for visual feedback
+        await new Promise(r => setTimeout(r, 600));
+
+        try {
+            const response = await fetch(`${API_URL}/challenges/${id}/progress`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    token: session.token,
+                    stepIndex: stepIndex
+                }),
+            });
+
+            if (!response.ok) throw new Error('Failed to progress');
+
+            const result = await response.json();
+
+            if (result.complete) {
+                // Challenge finished!
+                // Trigger submission flow
+                if (!playerName.trim()) {
+                    setShowNameInput(true);
+                    // Store latest content for submission
+                    window._pendingSubmission = { ...data, keystrokes: allKeystrokesRef.current };
+                    setIntermission(false);
+                    return;
+                }
+
+                await submitScore({ ...data, keystrokes: allKeystrokesRef.current }, playerName);
+            } else {
+                // Load next step
+                setStepIndex(result.stepIndex);
+                setSession(prev => ({
+                    ...prev,
+                    challenge: {
+                        ...prev.challenge,
+                        ...result.step
+                    }
+                }));
+                setIntermission(false);
+            }
+
+        } catch (err) {
+            console.error(err);
+            setError("Failed to load next step");
+            setIntermission(false);
         }
 
-        await submitScore(data, playerName);
-    }, [session, playerName]);
+    }, [session, stepIndex, intermission, id, playerName]);
+
 
     async function submitScore(data, name) {
         setSubmitting(true);
@@ -75,7 +134,7 @@ function ChallengeView() {
                     token: session.token,
                     playerName: name,
                     content: data.content,
-                    keystrokes: data.keystrokes,
+                    keystrokes: data.keystrokes, // All keystrokes from all steps
                     cursorPosition: data.cursorPosition,
                 }),
             });
@@ -103,6 +162,7 @@ function ChallengeView() {
         } finally {
             setSubmitting(false);
             setShowNameInput(false);
+            setIntermission(false);
         }
     }
 
@@ -149,6 +209,9 @@ function ChallengeView() {
                         {challenge?.difficulty}
                     </span>
                 </div>
+                <div className="step-indicator">
+                    Step {stepIndex + 1} / {totalSteps}
+                </div>
                 <Link to="/leaderboard" className="leaderboard-link">🏆 Leaderboard</Link>
             </div>
 
@@ -158,6 +221,15 @@ function ChallengeView() {
             </div>
 
             <div className="editor-container">
+                {intermission && (
+                    <div className="intermission-overlay">
+                        <div className="intermission-content">
+                            <h2>✅ Stage {stepIndex + 1} Complete!</h2>
+                            <p>Preparing next stage...</p>
+                        </div>
+                    </div>
+                )}
+
                 {showNameInput && (
                     <div className="name-modal">
                         <div className="name-modal-content">
@@ -234,16 +306,19 @@ function ChallengeView() {
                     </div>
                 )}
 
-                {!result && (
+                {!result && !intermission && (
                     <VimEditor
                         initialContent={challenge?.initialContent || ''}
                         targetContent={challenge?.targetContent}
                         highlightWord={challenge?.highlightWord}
                         targetLine={challenge?.targetLine}
                         highlightType={challenge?.highlightType}
+                        checkType={challenge?.checkType}
+                        targetValue={challenge?.targetValue}
+                        targetWord={challenge?.targetWord}
                         onKeystroke={handleKeystroke}
-                        onSubmit={handleSubmit}
-                        disabled={submitting}
+                        onStepComplete={handleStepComplete}
+                        disabled={submitting || intermission}
                     />
                 )}
             </div>
@@ -257,7 +332,7 @@ function ChallengeView() {
 
             <div className="stats-bar">
                 <span className="stat-item">
-                    ⌨️ Keystrokes: <strong>{keystrokeCount}</strong>
+                    ⌨️ Keystrokes (Step): <strong>{keystrokeCount}</strong>
                 </span>
             </div>
         </div>
