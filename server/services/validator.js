@@ -195,6 +195,42 @@ export function validateCursorPosition(cursorPosition, content, checkType, targe
             };
         }
 
+        case 'cursor_position': {
+            // Check if cursor is at specific line and column
+            // targetValue should be an object { line, col } or encoded somehow if needed.
+            // But we can expect targetValue to be the object passed from generateChallenge.
+            // However, typical usage passes a primitive.
+            // Let's assume targetValue is the object { line, col }
+
+            // Note: input 'line' is 1-indexed (from client usually).
+            // targetValue.line should be 1-indexed.
+            // targetValue.col should be 1-indexed (Vim columns are 1-indexed visibly, 0-indexed internally but client sends 1-indexed usually? 
+            // Let's check cursor_eol: expectedCol = lineContent.length + 1. So 1-indexed.
+
+            const targetLine = targetValue.line;
+            const targetCol = targetValue.col;
+
+            if (line !== targetLine) {
+                return {
+                    valid: false,
+                    reason: `Cursor should be on line ${targetLine}, but is on line ${line}`
+                };
+            }
+            if (col !== targetCol) {
+                // Get char at target for context
+                const l = lines[targetLine - 1] || '';
+                const formatChar = (c) => c === ' ' ? '<SPACE>' : (c === '\t' ? '<TAB>' : c);
+                const targetChar = l[targetCol - 1]; // 0-indexed access
+                const actualChar = l[col - 1];
+
+                return {
+                    valid: false,
+                    reason: `Cursor should be at col ${targetCol} ('${formatChar(targetChar)}'), but is at col ${col} ('${formatChar(actualChar)}')`
+                };
+            }
+            return { valid: true };
+        }
+
         default:
             console.warn(`Unknown cursor check type: ${checkType}`);
             return { valid: true }; // Unknown types pass by default

@@ -330,6 +330,7 @@ function ChallengeView() {
                         targetWord={challenge?.targetWord}
                         onKeystroke={handleKeystroke}
                         onStepComplete={handleStepComplete}
+                        initialCursor={challenge?.initialCursor}
                         disabled={submitting || intermission}
                     />
                 )}

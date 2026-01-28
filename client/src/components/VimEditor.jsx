@@ -94,6 +94,7 @@ function VimEditor({
     targetValue,
     targetWord,
     highlightColumn,
+    initialCursor = null,
     disabled = false
 }) {
     const editorRef = useRef(null);
@@ -234,14 +235,37 @@ function VimEditor({
         let initialDecorations = [];
         const doc = EditorState.create({ doc: initialContent }).doc;
 
-        // For navigation challenges: highlight target line in green
+        // For navigation challenges: highlight target line or specific char
         // Navigation challenges have identical initial and target content
-        if (targetLine && highlightType === 'target' && initialContent === targetContent) {
+        if (targetLine && highlightType === 'target') {
             if (targetLine <= doc.lines) {
                 const lineInfo = doc.line(targetLine);
-                initialDecorations.push(
-                    Decoration.line({ class: 'cm-target-line' }).range(lineInfo.from)
-                );
+
+                // If specific column provided (0-indexed or 1-indexed? Step definition says 0-indexed passed as highlightColumn)
+                // Let's assume passed prop highlightColumn is 0-indexed as per normal usage in this app so far (passed from step.highlightColumn).
+                if (typeof highlightColumn === 'number') {
+                    // Highlight the specific character
+                    // Ensure it's within line bounds
+                    const from = lineInfo.from + highlightColumn;
+                    const to = from + 1; // Highlight single char
+
+                    if (to <= lineInfo.to + 1) { // Allow highlighting slightly past end for EOL?
+                        // Vim EOL is usually just the last char or a special block.
+                        // But usually we just highlight the char at that pos.
+                        initialDecorations.push(
+                            Decoration.mark({ class: 'cm-target-match' }).range(from, Math.min(to, lineInfo.to))
+                        );
+                        // Also highlight line background for visibility?
+                        initialDecorations.push(
+                            Decoration.line({ class: 'cm-target-line' }).range(lineInfo.from)
+                        );
+                    }
+                } else {
+                    // Fallback: Highlight entire line
+                    initialDecorations.push(
+                        Decoration.line({ class: 'cm-target-line' }).range(lineInfo.from)
+                    );
+                }
             }
         }
 
@@ -389,6 +413,27 @@ function VimEditor({
             parent: editorRef.current,
         });
 
+        // Set initial cursor position if provided
+        if (initialCursor && initialCursor.line > 0) {
+            try {
+                // Convert 1-indexed line/col to offset
+                const lineInfo = view.state.doc.line(initialCursor.line);
+                // Ensure column is within bounds
+                const col = Math.min(Math.max(1, initialCursor.col), lineInfo.length + 1);
+                const offset = lineInfo.from + col - 1;
+
+                view.dispatch({
+                    selection: { anchor: offset, head: offset },
+                    scrollIntoView: true
+                });
+
+                // Update local state immediately
+                setCursorPos({ line: initialCursor.line, col: col });
+            } catch (e) {
+                console.warn('Failed to set initial cursor position:', e);
+            }
+        }
+
         viewRef.current = view;
 
         // Native keydown listener to capture ALL keystrokes before Vim processes them
@@ -438,7 +483,7 @@ function VimEditor({
             currentEditor?.removeEventListener('keydown', handleKeyDown, true);
             view.destroy();
         };
-    }, [initialContent, disabled, onContentChange, recordKeystroke, highlightWord, targetLine, highlightType]);
+    }, [initialContent, disabled, onContentChange, recordKeystroke, highlightWord, targetLine, highlightType, initialCursor]);
 
     // Reset keystrokes when content changes
     useEffect(() => {

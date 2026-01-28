@@ -89,6 +89,21 @@ export function validateCursorPosition(cursorPosition, content, checkType, targe
             return false;
         }
 
+        case 'cursor_position': {
+            // Check specific line and column
+            // targetValue is { line, col }
+            // Note: input line/col are 1-indexed (from prop usually) or depend on caller.
+            // In VSCode/Monaco, cursor is 1-indexed.
+            // Our generator sends 1-indexed targets.
+
+            if (!targetValue || typeof targetValue !== 'object') return false;
+
+            const targetLine = targetValue.line;
+            const targetCol = targetValue.col;
+
+            return line === targetLine && col === targetCol;
+        }
+
         default:
             return true;
     }
