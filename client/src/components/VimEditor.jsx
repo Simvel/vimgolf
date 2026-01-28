@@ -255,10 +255,6 @@ function VimEditor({
                         initialDecorations.push(
                             Decoration.mark({ class: 'cm-target-match' }).range(from, Math.min(to, lineInfo.to))
                         );
-                        // Also highlight line background for visibility?
-                        initialDecorations.push(
-                            Decoration.line({ class: 'cm-target-line' }).range(lineInfo.from)
-                        );
                     }
                 } else {
                     // Fallback: Highlight entire line

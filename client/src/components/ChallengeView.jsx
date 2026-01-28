@@ -328,6 +328,7 @@ function ChallengeView() {
                         checkType={challenge?.checkType}
                         targetValue={challenge?.targetValue}
                         targetWord={challenge?.targetWord}
+                        highlightColumn={challenge?.highlightColumn}
                         onKeystroke={handleKeystroke}
                         onStepComplete={handleStepComplete}
                         initialCursor={challenge?.initialCursor}
