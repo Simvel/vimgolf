@@ -260,14 +260,15 @@ function VimEditor({
 
                     if (correspondingTargetLine !== line) {
                         // Find the words/characters that are different
-                        const initialWords = line.split(/(\s+)/);
-                        const targetWords = correspondingTargetLine.split(/(\s+)/);
+                        // Split by non-word characters to get words and punctuation as separate tokens
+                        const initialWords = line.split(/([^\w]+)/);
+                        const targetWords = correspondingTargetLine.split(/([^\w]+)/);
                         const targetWordSet = new Set(targetWords);
 
                         let wordOffset = lineStart;
                         for (const word of initialWords) {
-                            if (word.trim() && !targetWordSet.has(word)) {
-                                // This word is being deleted or changed
+                            if (word !== '' && !targetWordSet.has(word)) {
+                                // This token is being deleted or changed
                                 const className = highlightType === 'change' ? 'cm-change-match' : 'cm-delete-match';
                                 initialDecorations.push(
                                     Decoration.mark({ class: className }).range(wordOffset, wordOffset + word.length)
