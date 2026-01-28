@@ -29,7 +29,7 @@ app.get('/api/health', (req, res) => {
 if (process.env.NODE_ENV === 'production') {
     app.use(express.static(join(__dirname, '../client/dist')));
 
-    app.get('*', (req, res) => {
+    app.get(/^(?!\/api).+/, (req, res) => {
         res.sendFile(join(__dirname, '../client/dist/index.html'));
     });
 }

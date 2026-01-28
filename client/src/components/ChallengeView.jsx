@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import VimEditor from './VimEditor';
 
-const API_URL = 'http://localhost:3001/api';
+const API_URL = '/api';
 
 function ChallengeView() {
     const { id } = useParams();

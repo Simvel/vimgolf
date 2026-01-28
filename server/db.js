@@ -5,7 +5,8 @@ import { dirname, join } from 'path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const db = new Database(join(__dirname, 'vimgolf.db'));
+const dbPath = process.env.DB_PATH || join(__dirname, 'vimgolf.db');
+const db = new Database(dbPath);
 
 // Initialize database schema
 db.exec(`

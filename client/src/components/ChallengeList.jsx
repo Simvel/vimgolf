@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 
-const API_URL = 'http://localhost:3001/api';
+const API_URL = '/api';
 
 const difficultyColors = {
     easy: '#4ade80',
