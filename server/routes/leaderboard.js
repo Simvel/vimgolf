@@ -101,8 +101,28 @@ router.post('/submit', (req, res) => {
             }
         }
 
-        // Calculate time and keystroke count
-        const timeMs = calculateTime(keystrokes);
+        // Calculate time based on server-side session start_time
+        if (!session.start_time) {
+            // Fallback if start_time was never set (shouldn't happen with new client, but for safety)
+            // Or maybe return error? User said "cannot successfully submit... without steps... server decided time"
+            // If we strictly enforce it:
+            // return res.status(400).json({ error: 'Timer was never started' });
+
+            // For transition/dev safety, let's use current naive calc if missing, but preferably error.
+            // Let's return error to be strict as requested.
+            // Actually, if we just started the server and added this, old sessions might fail.
+            // But ephemeral DB implies fresh start usually.
+
+            // NOTE: Changing to STRICT server time.
+            return res.status(400).json({ error: 'Timer was not started properly. Please restart the challenge.' });
+        }
+
+        const serverEndTime = new Date();
+        const serverStartTime = new Date(session.start_time);
+        // Time in MS
+        const timeMs = serverEndTime.getTime() - serverStartTime.getTime();
+
+        // Deprecated: const timeMs = calculateTime(keystrokes);
         const keystrokeCount = keystrokes.length;
 
         // Validate player name

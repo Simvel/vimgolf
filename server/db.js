@@ -37,4 +37,14 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_scores_time ON scores(time_ms);
 `);
 
+// Migration: Add start_time to sessions if checks missing
+try {
+  db.exec('ALTER TABLE sessions ADD COLUMN start_time DATETIME');
+} catch (e) {
+  if (!e.message.includes('duplicate column')) {
+    // Ignore if exists, otherwise log
+    // console.log('Note: start_time column might already exist or partial migration', e.message);
+  }
+}
+
 export default db;

@@ -139,5 +139,36 @@ router.get('/:id', (req, res) => {
         res.status(500).json({ error: 'Failed to fetch challenge' });
     }
 });
+// Start the server-side timer (called on first keypress)
+router.post('/:id/start-timer', (req, res) => {
+    try {
+        const { token } = req.body;
+        const sessionData = verifySessionToken(token);
+        if (!sessionData) {
+            return res.status(401).json({ error: 'Invalid session token' });
+        }
+
+        const { sessionId } = sessionData;
+        const session = db.prepare('SELECT start_time FROM sessions WHERE id = ?').get(sessionId);
+
+        if (!session) {
+            return res.status(404).json({ error: 'Session not found' });
+        }
+
+        // Only set start_time if NOT already set
+        if (!session.start_time) {
+            const now = new Date().toISOString();
+            db.prepare('UPDATE sessions SET start_time = ? WHERE id = ?').run(now, sessionId);
+            res.json({ success: true, startTime: now, message: 'Timer started' });
+        } else {
+            // Idempotent success
+            res.json({ success: true, startTime: session.start_time, message: 'Timer already running' });
+        }
+
+    } catch (error) {
+        console.error('Error starting timer:', error);
+        res.status(500).json({ error: 'Failed to start timer' });
+    }
+});
 
 export default router;

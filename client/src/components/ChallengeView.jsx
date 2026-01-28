@@ -27,6 +27,7 @@ function ChallengeView() {
     // The user requirement says "base total time taken on server timings".
     // But we might want to track keystrokes just for the report.
     const allKeystrokesRef = useRef([]);
+    const hasStartedRef = useRef(false);
 
     useEffect(() => {
         startChallenge();
@@ -39,6 +40,7 @@ function ChallengeView() {
         setKeystrokeCount(0);
         setStepIndex(0);
         allKeystrokesRef.current = [];
+        hasStartedRef.current = false;
 
         try {
             const response = await fetch(`${API_URL}/challenges/${id}/start`, {
@@ -60,7 +62,17 @@ function ChallengeView() {
 
     const handleKeystroke = useCallback((keystroke, count) => {
         setKeystrokeCount(count); // This is just for current step display
-    }, []);
+
+        // Start server timer on FIRST keystroke of the entire challenge
+        if (!hasStartedRef.current && session) {
+            hasStartedRef.current = true;
+            fetch(`${API_URL}/challenges/${id}/start-timer`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token: session.token })
+            }).catch(e => console.error("Failed to start timer", e));
+        }
+    }, [session, id]);
 
     const handleStepComplete = useCallback(async (data) => {
         if (!session || intermission) return;
