@@ -115,6 +115,8 @@ const challenges = [
                     step.targetValue = targetWord;
                     step.targetWord = targetWord;
                     step.highlightWord = targetWord;
+                    // Calculate column index (first occurrence)
+                    step.highlightColumn = lines[searchLine - 1].indexOf(targetWord);
                 } else { // End of line
                     const targetLine = randomInRange(stepSeed, 20, 80);
                     step.instructions = `Move cursor to the END of Line ${targetLine}.`;
@@ -190,7 +192,7 @@ const challenges = [
                     while ((match = wordRegex.exec(lineContent)) !== null) {
                         // Only stick to words with length > 1 to avoid deleting single chars which might be variables like 'i'
                         // but user just said "stupid stuff like remove the "":"", so alphanumeric is better.
-                        if (match[0].length > 0) {
+                        if (match[0].length > 1) {
                             wordsMap.push({ word: match[0], index: match.index });
                         }
                     }
@@ -224,6 +226,7 @@ const challenges = [
 
                         step.instructions = `Delete the word "${wordToDelete}" on line ${targetLineIdx + 1}.`;
                         step.highlightWord = wordToDelete;
+                        step.highlightColumn = targetObj.index;
                         step.targetLine = targetLineIdx + 1;
                     } else {
                         // Fallback if no words found on line (unlikely given previous checks)

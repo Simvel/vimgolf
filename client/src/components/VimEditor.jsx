@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { EditorView, keymap, lineNumbers, Decoration } from '@codemirror/view';
 import { EditorState, StateField, StateEffect } from '@codemirror/state';
-import { defaultKeymap } from '@codemirror/commands';
+import { defaultKeymap, history } from '@codemirror/commands';
 import { vim, Vim } from '@replit/codemirror-vim';
 import { validateContent, validateCursorPosition } from '../utils/validator';
 
@@ -93,6 +93,7 @@ function VimEditor({
     checkType,
     targetValue,
     targetWord,
+    highlightColumn,
     disabled = false
 }) {
     const editorRef = useRef(null);
@@ -301,19 +302,55 @@ function VimEditor({
             }
         }
 
-        // Also support explicit highlightWord for backwards compatibility
         if (highlightWord && (highlightType === 'delete' || highlightType === 'change' || highlightType === 'target')) {
             const regex = new RegExp(highlightWord, 'g');
             let match;
             const text = initialContent;
-            while ((match = regex.exec(text)) !== null) {
-                const className = highlightType === 'delete' ? 'cm-delete-match'
-                    : highlightType === 'change' ? 'cm-change-match'
-                        : 'cm-target-match';
 
-                initialDecorations.push(
-                    Decoration.mark({ class: className }).range(match.index, match.index + match[0].length)
-                );
+            while ((match = regex.exec(text)) !== null) {
+                // If specific column is provided (for single-line targets usually)
+                if (targetLine && typeof highlightColumn === 'number') {
+                    // Get the line offset
+                    const lineInfo = doc.line(targetLine);
+                    // Check if this match is at the correct line and column
+                    // match.index is absolute. lineInfo.from is start of line.
+                    // highlightColumn is 0-indexed offset from start of line? 
+                    // We assumed it matches `match.index` relative to line start.
+
+                    const relativeIndex = match.index - lineInfo.from;
+                    if (match.index >= lineInfo.from && match.index < lineInfo.to && relativeIndex === highlightColumn) {
+                        const className = highlightType === 'delete' ? 'cm-delete-match'
+                            : highlightType === 'change' ? 'cm-change-match'
+                                : 'cm-target-match';
+
+                        initialDecorations.push(
+                            Decoration.mark({ class: className }).range(match.index, match.index + match[0].length)
+                        );
+                    }
+                }
+                // Fallback: if only targetLine is provided, only highlight on that line
+                else if (targetLine) {
+                    const lineInfo = doc.line(targetLine);
+                    if (match.index >= lineInfo.from && match.index < lineInfo.to) {
+                        const className = highlightType === 'delete' ? 'cm-delete-match'
+                            : highlightType === 'change' ? 'cm-change-match'
+                                : 'cm-target-match';
+
+                        initialDecorations.push(
+                            Decoration.mark({ class: className }).range(match.index, match.index + match[0].length)
+                        );
+                    }
+                }
+                // Fallback: global highlight (legacy)
+                else {
+                    const className = highlightType === 'delete' ? 'cm-delete-match'
+                        : highlightType === 'change' ? 'cm-change-match'
+                            : 'cm-target-match';
+
+                    initialDecorations.push(
+                        Decoration.mark({ class: className }).range(match.index, match.index + match[0].length)
+                    );
+                }
             }
         }
 
@@ -326,6 +363,7 @@ function VimEditor({
                 vimTheme,
                 darkTheme,
                 keymap.of(defaultKeymap),
+                history(),
                 lineNumbers(),
                 visualCuesField.init(() => decorationsSet),
                 updateListener,
