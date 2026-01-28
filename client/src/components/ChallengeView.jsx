@@ -240,6 +240,7 @@ function ChallengeView() {
                         targetContent={challenge?.targetContent}
                         highlightWord={challenge?.highlightWord}
                         targetLine={challenge?.targetLine}
+                        highlightType={challenge?.highlightType}
                         onKeystroke={handleKeystroke}
                         onSubmit={handleSubmit}
                         disabled={submitting}

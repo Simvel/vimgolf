@@ -71,6 +71,7 @@ router.post('/:id/start', (req, res) => {
                 targetContent: challenge.targetContent,
                 highlightWord: challenge.highlightWord,
                 targetLine: challenge.targetLine,
+                highlightType: challenge.highlightType,
                 startLine: challenge.startLine,
                 endLine: challenge.endLine
             }

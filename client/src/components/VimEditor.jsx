@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { EditorView, keymap } from '@codemirror/view';
-import { EditorState } from '@codemirror/state';
+import { EditorView, keymap, lineNumbers, Decoration } from '@codemirror/view';
+import { EditorState, StateField, StateEffect } from '@codemirror/state';
 import { defaultKeymap } from '@codemirror/commands';
 import { vim, Vim } from '@replit/codemirror-vim';
 
@@ -38,6 +38,35 @@ const vimTheme = EditorView.theme({
         color: '#00ff00',
         padding: '4px 8px',
     },
+    // Visual cue styles
+    '.cm-target-line': {
+        backgroundColor: 'rgba(0, 255, 136, 0.15)',
+    },
+    '.cm-target-match': { // Default fallback
+        backgroundColor: 'rgba(0, 255, 136, 0.2)',
+        color: '#ffffff',
+        fontWeight: 'bold',
+        borderRadius: '2px',
+        padding: '0 2px',
+    },
+    '.cm-delete-match': {
+        backgroundColor: 'rgba(248, 113, 113, 0.2)',
+        color: '#f87171',
+        fontWeight: 'bold',
+        textDecoration: 'line-through',
+        borderRadius: '2px',
+        padding: '0 2px',
+    },
+    '.cm-change-match': {
+        backgroundColor: 'rgba(251, 191, 36, 0.2)',
+        color: '#fbbf24',
+        fontWeight: 'bold',
+        borderRadius: '2px',
+        padding: '0 2px',
+    },
+    '.cm-delete-line': {
+        backgroundColor: 'rgba(248, 113, 113, 0.15)',
+    },
 });
 
 // Dark background
@@ -59,6 +88,7 @@ function VimEditor({
     onSubmit,
     highlightWord,
     targetLine,
+    highlightType,
     disabled = false
 }) {
     const editorRef = useRef(null);
@@ -112,6 +142,8 @@ function VimEditor({
         });
     }, [onSubmit]);
 
+
+
     useEffect(() => {
         if (!editorRef.current || disabled) return;
 
@@ -150,7 +182,6 @@ function VimEditor({
         // Block mouse clicks from moving the cursor (prevents cheating)
         const blockMouseEvents = EditorView.domEventHandlers({
             mousedown: (event) => {
-                // Prevent all mouse interactions except for focusing the editor
                 event.preventDefault();
                 return true;
             },
@@ -164,6 +195,112 @@ function VimEditor({
             },
         });
 
+        // Effect to update visual cues
+        const setVisualCues = StateEffect.define();
+
+        const visualCuesField = StateField.define({
+            create() { return Decoration.none; },
+            update(decorations, tr) {
+                decorations = decorations.map(tr.changes);
+                for (let e of tr.effects) {
+                    if (e.is(setVisualCues)) {
+                        decorations = e.value;
+                    }
+                }
+                return decorations;
+            },
+            provide: f => EditorView.decorations.from(f)
+        });
+
+        // Calculate initial decorations based on diff between initial and target content
+        let initialDecorations = [];
+        const doc = EditorState.create({ doc: initialContent }).doc;
+
+        // For navigation challenges: highlight target line in green
+        // Navigation challenges have identical initial and target content
+        if (targetLine && highlightType === 'target' && initialContent === targetContent) {
+            if (targetLine <= doc.lines) {
+                const lineInfo = doc.line(targetLine);
+                initialDecorations.push(
+                    Decoration.line({ class: 'cm-target-line' }).range(lineInfo.from)
+                );
+            }
+        }
+
+        // For deletion/edit challenges: compute diff and highlight differences
+        if (targetContent && initialContent !== targetContent) {
+            const initialLines = initialContent.split('\n');
+            const targetLines = targetContent.split('\n');
+
+            // Determine if this is a line deletion (fewer lines in target)
+            const isLineDeletion = targetLines.length < initialLines.length;
+
+            // Track character offset in the document
+            let charOffset = 0;
+
+            for (let i = 0; i < initialLines.length; i++) {
+                const line = initialLines[i];
+                const lineStart = charOffset;
+                const lineEnd = charOffset + line.length;
+
+                if (isLineDeletion) {
+                    // Check if this specific line is being deleted
+                    // A line is deleted if it exists in initial but not in target (exact match)
+                    const lineExistsInTarget = targetLines.includes(line);
+
+                    if (!lineExistsInTarget && line.trim().length > 0) {
+                        // This entire line is being deleted
+                        initialDecorations.push(
+                            Decoration.line({ class: 'cm-delete-line' }).range(lineStart)
+                        );
+                    }
+                } else {
+                    // Same number of lines - compare line by line for word-level changes
+                    const correspondingTargetLine = targetLines[i] || '';
+
+                    if (correspondingTargetLine !== line) {
+                        // Find the words/characters that are different
+                        const initialWords = line.split(/(\s+)/);
+                        const targetWords = correspondingTargetLine.split(/(\s+)/);
+                        const targetWordSet = new Set(targetWords);
+
+                        let wordOffset = lineStart;
+                        for (const word of initialWords) {
+                            if (word.trim() && !targetWordSet.has(word)) {
+                                // This word is being deleted or changed
+                                const className = highlightType === 'change' ? 'cm-change-match' : 'cm-delete-match';
+                                initialDecorations.push(
+                                    Decoration.mark({ class: className }).range(wordOffset, wordOffset + word.length)
+                                );
+                            }
+                            wordOffset += word.length;
+                        }
+                    }
+                }
+
+                // Move to next line (+1 for newline character, except for last line)
+                charOffset = lineEnd + (i < initialLines.length - 1 ? 1 : 0);
+            }
+        }
+
+        // Also support explicit highlightWord for backwards compatibility
+        if (highlightWord && (highlightType === 'delete' || highlightType === 'change' || highlightType === 'target')) {
+            const regex = new RegExp(highlightWord, 'g');
+            let match;
+            const text = initialContent;
+            while ((match = regex.exec(text)) !== null) {
+                const className = highlightType === 'delete' ? 'cm-delete-match'
+                    : highlightType === 'change' ? 'cm-change-match'
+                        : 'cm-target-match';
+
+                initialDecorations.push(
+                    Decoration.mark({ class: className }).range(match.index, match.index + match[0].length)
+                );
+            }
+        }
+
+        const decorationsSet = Decoration.set(initialDecorations.sort((a, b) => a.from - b.from));
+
         const state = EditorState.create({
             doc: initialContent,
             extensions: [
@@ -171,6 +308,8 @@ function VimEditor({
                 vimTheme,
                 darkTheme,
                 keymap.of(defaultKeymap),
+                lineNumbers(),
+                visualCuesField.init(() => decorationsSet),
                 updateListener,
                 modeListener,
                 EditorView.lineWrapping,
@@ -232,7 +371,7 @@ function VimEditor({
             currentEditor?.removeEventListener('keydown', handleKeyDown, true);
             view.destroy();
         };
-    }, [initialContent, disabled, onContentChange, recordKeystroke]);
+    }, [initialContent, disabled, onContentChange, recordKeystroke, highlightWord, targetLine, highlightType]);
 
     // Reset keystrokes when content changes
     useEffect(() => {

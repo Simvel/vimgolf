@@ -111,7 +111,8 @@ const challenges = [
                 instructions: `Move your cursor to line ${targetLine}. Press SUBMIT when your cursor is on that line.`,
                 targetLine,
                 checkType: 'cursor_line',
-                targetValue: targetLine
+                targetValue: targetLine,
+                highlightType: 'target'
             };
         },
         timePar: 10000,
@@ -144,7 +145,8 @@ const challenges = [
                 targetLine: lineNum,
                 targetWord,
                 checkType: 'cursor_word',
-                targetValue: targetWord
+                targetValue: targetWord,
+                highlightType: 'target'
             };
         },
         timePar: 15000,
@@ -164,7 +166,8 @@ const challenges = [
                 instructions: `Move your cursor to the END of line ${targetLine}. Use the $ command.`,
                 targetLine,
                 checkType: 'cursor_eol',
-                targetValue: targetLine
+                targetValue: targetLine,
+                highlightType: 'target'
             };
         },
         timePar: 10000,
@@ -200,7 +203,8 @@ const challenges = [
                 instructions: `Delete the word "${targetWord}" on line ${lineNum}. Use 'dw' or 'daw'.`,
                 targetLine: lineNum,
                 highlightWord: targetWord,
-                checkType: 'content_match'
+                checkType: 'content_match',
+                highlightType: 'delete'
             };
         },
         timePar: 15000,
@@ -224,7 +228,8 @@ const challenges = [
                 instructions: `Move to line ${targetLine} and position cursor at the first non-blank character. Use '^'.`,
                 targetLine,
                 checkType: 'cursor_bol',
-                targetValue: targetLine
+                targetValue: targetLine,
+                highlightType: 'target'
             };
         },
         timePar: 10000,
@@ -244,7 +249,8 @@ const challenges = [
                 instructions: `Navigate to line ${targetLine}. Try using '${targetLine}G' or ':${targetLine}'.`,
                 targetLine,
                 checkType: 'cursor_line',
-                targetValue: targetLine
+                targetValue: targetLine,
+                highlightType: 'target'
             };
         },
         timePar: 10000,
@@ -274,7 +280,8 @@ const challenges = [
                 targetContent: targetLines.join('\n'),
                 instructions: `Delete "WRONG WORDS" on line ${lineNum}. Try '2dw' or 'd2w'.`,
                 targetLine: lineNum,
-                checkType: 'content_match'
+                checkType: 'content_match',
+                highlightType: 'delete'
             };
         },
         timePar: 12000,
@@ -303,7 +310,8 @@ const challenges = [
                 targetContent: targetLines.join('\n'),
                 instructions: `Delete line ${targetLine} entirely. Use 'dd'.`,
                 targetLine,
-                checkType: 'content_match'
+                checkType: 'content_match',
+                highlightType: 'delete'
             };
         },
         timePar: 10000,
@@ -328,7 +336,8 @@ const challenges = [
                 instructions: `Navigate to the beginning of paragraph ${targetParagraph}. Use '{' and '}' to jump.`,
                 targetParagraph,
                 checkType: 'cursor_paragraph',
-                targetValue: targetParagraph
+                targetValue: targetParagraph,
+                highlightType: 'target'
             };
         },
         timePar: 15000,
@@ -391,7 +400,10 @@ const challenges = [
                 initialContent: lines.join('\n'),
                 targetContent: targetLines.join('\n'),
                 instructions: `Copy line ${sourceLine} and paste it after line ${destLine}. Use 'yy' and 'p'.`,
-                checkType: 'content_match'
+                checkType: 'content_match',
+                highlightType: 'target',
+                startLine: sourceLine,
+                endLine: sourceLine
             };
         },
         timePar: 20000,
@@ -424,7 +436,8 @@ const challenges = [
                 targetContent: targetLines.join('\n'),
                 instructions: `On line ${lineNum}, change "${oldWord}" to "${newWord}". Use 'cw' or 'ciw'.`,
                 checkType: 'content_match',
-                highlightWord: oldWord
+                highlightWord: oldWord,
+                highlightType: 'change'
             };
         },
         timePar: 35000,
@@ -479,7 +492,8 @@ const challenges = [
                 instructions: `Lines ${startLine}-${endLine} have wrong indentation. Select them with 'V' and indent with '>'.`,
                 startLine,
                 endLine,
-                checkType: 'content_match'
+                checkType: 'content_match',
+                highlightType: 'target'
             };
         },
         timePar: 25000,
@@ -506,7 +520,8 @@ const challenges = [
                 targetContent: targetLines.join('\n'),
                 instructions: `Change "${targetWords}" to "${targetWords.toUpperCase()}" in the config section header. Use 'gU' with motion or visual mode.`,
                 highlightWord: targetWords,
-                checkType: 'content_match'
+                checkType: 'content_match',
+                highlightType: 'change'
             };
         },
         timePar: 35000,
