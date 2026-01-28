@@ -203,6 +203,8 @@ function VimEditor({
 
             // Ignore repeated keys (holding down a key)
             if (event.repeat) {
+                event.preventDefault();
+                event.stopPropagation();
                 return;
             }
 
