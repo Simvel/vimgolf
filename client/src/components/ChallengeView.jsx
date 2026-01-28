@@ -94,6 +94,8 @@ function ChallengeView() {
                 timeMs: result.timeMs,
                 keystrokes: result.keystrokes,
                 rank: result.rank,
+                score: result.score,
+                isNewBest: result.isNewBest
             });
         } catch (err) {
             setError(err.message);
@@ -185,7 +187,16 @@ function ChallengeView() {
                         {result.success ? (
                             <>
                                 <h2>🎉 Challenge Complete!</h2>
+                                {result.isNewBest && (
+                                    <div className="new-highscore-badge">
+                                        ✨ New high score! ✨
+                                    </div>
+                                )}
                                 <div className="result-stats">
+                                    <div className="stat">
+                                        <span className="stat-value">{result.score}</span>
+                                        <span className="stat-label">Score</span>
+                                    </div>
                                     <div className="stat">
                                         <span className="stat-value">{formatTime(result.timeMs)}</span>
                                         <span className="stat-label">Time</span>
@@ -203,7 +214,7 @@ function ChallengeView() {
                                     <button onClick={startChallenge} className="retry-btn">
                                         🔄 Try Again
                                     </button>
-                                    <Link to="/leaderboard" className="view-leaderboard-btn">
+                                    <Link to={`/leaderboard?challenge=${challenge?.id}`} className="view-leaderboard-btn">
                                         🏆 View Leaderboard
                                     </Link>
                                     <Link to="/" className="next-challenge-btn">
