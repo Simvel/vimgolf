@@ -119,11 +119,10 @@ const challenges = [
 
             for (let i = 0; i < numSteps; i++) {
                 const stepSeed = seed + i * 100;
-                // Alternate between Line, Word, and End-of-Line targets
                 const type = i % 3;
                 let step = {
                     initialContent: content,
-                    targetContent: content, // Content doesn't change in navigation
+                    targetContent: content,
                     highlightType: 'target'
                 };
 
@@ -135,10 +134,7 @@ const challenges = [
                     step.targetLine = targetLine;
                     step.checkType = 'cursor_line';
                     step.targetValue = targetLine;
-                    step.highlightWord = null;
-                    step.highlightColumn = null;
                 } else if (type === 1) { // Word navigation
-                    // Find a line with "data" or "SECTION"
                     let searchLine = randomInRange(stepSeed, 10, 90);
                     while (!lines[searchLine - 1].includes('data') && !lines[searchLine - 1].includes('SECTION')) {
                         searchLine++;
@@ -151,7 +147,6 @@ const challenges = [
                     step.targetValue = targetWord;
                     step.targetWord = targetWord;
                     step.highlightWord = targetWord;
-                    // Calculate column index (first occurrence)
                     step.highlightColumn = lines[searchLine - 1].indexOf(targetWord);
                 } else { // End of line
                     const targetLine = randomInRange(stepSeed, 20, 80);
@@ -159,8 +154,6 @@ const challenges = [
                     step.targetLine = targetLine;
                     step.checkType = 'cursor_eol';
                     step.targetValue = targetLine;
-                    step.highlightWord = null;
-                    step.highlightColumn = null;
                 }
                 steps.push(step);
             }
@@ -180,56 +173,40 @@ const challenges = [
             let currentContent = EXPANDED_CODE_SAMPLE;
             const numSteps = 5;
 
-            // Defines possible deletion targets
-            // We find lines containing specific things and delete them or parts of them
-
             for (let i = 0; i < numSteps; i++) {
                 const stepSeed = seed + i * 50;
                 const lines = currentContent.split('\n');
-
-                // Find a non-empty line to delete or modify, preferably one that hasn't been touched?
-                // For simplicity, we'll pick random lines that are "safe" to delete (e.g. valid lines)
-                // To avoid breaking the code structure too much, we'll mostly target simple statements or comments if we added them.
-                // But the user just wants "Delete X", it doesn't have to compile.
-
                 let targetLineIdx = -1;
                 let attempts = 0;
                 while (targetLineIdx === -1 && attempts < 100) {
                     const idx = randomInRange(stepSeed + attempts, 1, lines.length - 2);
-                    if (lines[idx].trim().length > 5) { // Ensure reasonable line
+                    if (lines[idx].trim().length > 5) {
                         targetLineIdx = idx;
                     }
                     attempts++;
                 }
-
-                if (targetLineIdx === -1) targetLineIdx = 5; // Fallback
+                if (targetLineIdx === -1) targetLineIdx = 5;
 
                 const lineContent = lines[targetLineIdx];
-                const type = i % 2; // 0 = delete line, 1 = delete word
-
+                const type = i % 2;
                 let nextContent = '';
                 const step = {
-                    startLine: targetLineIdx + 1, // hint
+                    startLine: targetLineIdx + 1,
                     checkType: 'content_match',
                     highlightType: 'delete'
                 };
 
                 if (type === 0 || lineContent.length < 10) {
-                    // Delete Line
                     const nextLines = [...lines];
                     nextLines.splice(targetLineIdx, 1);
                     nextContent = nextLines.join('\n');
                     step.instructions = `Delete line ${targetLineIdx + 1}: "${lineContent.trim()}"`;
                     step.targetLine = targetLineIdx + 1;
                 } else {
-                    // Delete Word
                     const wordsMap = [];
-                    // Find all word instances with their indices
                     let match;
                     const wordRegex = /\b\w+\b/g;
                     while ((match = wordRegex.exec(lineContent)) !== null) {
-                        // Only stick to words with length > 1 to avoid deleting single chars which might be variables like 'i'
-                        // but user just said "stupid stuff like remove the "":"", so alphanumeric is better.
                         if (match[0].length > 1) {
                             wordsMap.push({ word: match[0], index: match.index });
                         }
@@ -238,19 +215,8 @@ const challenges = [
                     if (wordsMap.length > 0) {
                         const targetObj = wordsMap[randomInRange(stepSeed, 0, wordsMap.length - 1)];
                         const wordToDelete = targetObj.word;
-
-                        // We need to be careful about replacing only the specific instance if possible, 
-                        // but the client highlights all instances usually. 
-                        // For simplicity in this generator, we'll replace the first occurrence or just use replace() 
-                        // which replaces the first one. 
-                        // Ideally we should replace the specific one. 
-
-                        // Let's reconstruct the line without that specific word instance
                         const prefix = lineContent.substring(0, targetObj.index);
                         const suffix = lineContent.substring(targetObj.index + wordToDelete.length);
-
-                        // Also try to clean up one surrounding space if possible to make it look cleaner?
-                        // If there is a space after, remove it. If not, try before.
                         let newLine = prefix + suffix;
                         if (suffix.startsWith(' ')) {
                             newLine = prefix + suffix.substring(1);
@@ -267,7 +233,6 @@ const challenges = [
                         step.highlightColumn = targetObj.index;
                         step.targetLine = targetLineIdx + 1;
                     } else {
-                        // Fallback if no words found on line (unlikely given previous checks)
                         const nextLines = [...lines];
                         nextLines.splice(targetLineIdx, 1);
                         nextContent = nextLines.join('\n');
@@ -279,8 +244,6 @@ const challenges = [
                 step.initialContent = currentContent;
                 step.targetContent = nextContent;
                 steps.push(step);
-
-                // Content for next step starts at this step's target
                 currentContent = nextContent;
             }
 
@@ -626,6 +589,118 @@ const challenges = [
         },
         timePar: 60000,
         keyPressesPar: 25
+    },
+    {
+        id: 5,
+        name: "Smart Deletion",
+        difficulty: "hard",
+        description: "Delete using precise Vim commands: dd, dw, dW, 2dd, etc.",
+        generate: (seed) => {
+            const steps = [];
+            let currentContent = EXPANDED_CODE_SAMPLE;
+            const numSteps = 6;
+
+            for (let i = 0; i < numSteps; i++) {
+                const stepSeed = seed + i * 222;
+                const lines = currentContent.split('\n');
+
+                const operations = ['dd', '2dd', '3dd', 'dw', '2dw', 'dW', '2dW'];
+                // Weighted selection? Or pure random.
+                const op = operations[randomInRange(stepSeed, 0, operations.length - 1)];
+
+                let step = {
+                    checkType: 'content_match',
+                    highlightType: 'delete'
+                };
+
+                let validMove = false;
+                let attempts = 0;
+
+                while (!validMove && attempts < 50) {
+                    attempts++;
+                    // Pick random start line (0-indexed for logic)
+                    const lineIdx = randomInRange(stepSeed + attempts, 0, lines.length - 1);
+                    if (lines[lineIdx].trim() === '') continue; // Skip empty lines for interesting deletions
+
+                    // For line deletions
+                    if (op.includes('dd')) {
+                        const count = op.startsWith('d') ? 1 : parseInt(op[0]);
+                        if (lineIdx + count <= lines.length) {
+                            // Perform deletion
+                            step.targetLine = lineIdx + 1;
+                            step.instructions = `Delete ${count === 1 ? 'one line' : count + ' lines'} (${op}).`;
+                            step.initialCursor = { line: lineIdx + 1, col: 1 };
+
+                            const nextLines = [...lines];
+                            nextLines.splice(lineIdx, count);
+                            step.targetContent = nextLines.join('\n');
+
+                            validMove = true;
+                        }
+                    } else {
+                        // Word deletions (dw, 2dw, dW, 2dW)
+                        const count = op.length === 2 ? 1 : parseInt(op[0]);
+                        const type = op.includes('W') ? 'W' : 'w';
+
+                        // Pick random column. Prefer non-space to start?
+                        const lineLen = lines[lineIdx].length;
+                        if (lineLen === 0) continue;
+
+                        const colIdx = randomInRange(stepSeed + attempts * 2, 0, lineLen - 1);
+
+                        // Simulate `dw` / `dW`
+                        const startPos = { line: lineIdx, col: colIdx };
+                        const endPos = VimLogic.move(startPos, type, count, lines);
+
+                        // Constrain to single-line deletions for better UI highlighting initially
+                        if (endPos.line !== lineIdx) continue;
+
+                        // Calculate text validity (should not be empty)
+                        if (endPos.col <= colIdx) continue; // Should have moved forward
+
+                        const textToDelete = lines[lineIdx].substring(colIdx, endPos.col);
+                        if (textToDelete.length === 0) continue;
+
+                        // Construct target content
+                        const newLine = lines[lineIdx].substring(0, colIdx) + lines[lineIdx].substring(endPos.col);
+                        const nextLines = [...lines];
+                        nextLines[lineIdx] = newLine;
+
+                        step.targetContent = nextLines.join('\n');
+                        step.targetLine = lineIdx + 1;
+                        step.highlightColumn = colIdx;
+
+                        // Escape regex special characters for highlighting
+                        const escapedText = textToDelete.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                        step.highlightWord = escapedText;
+
+                        const unit = type === 'W' ? 'WORD' : 'word';
+                        step.instructions = `Delete ${count === 1 ? 'one ' + unit : count + ' ' + unit + 's'} (${op}).`;
+                        step.initialCursor = { line: lineIdx + 1, col: colIdx + 1 };
+
+                        validMove = true;
+                    }
+                }
+
+                if (!validMove) {
+                    // Fallback to simple dd
+                    const lineIdx = 5;
+                    const nextLines = [...lines];
+                    nextLines.splice(lineIdx, 1);
+                    step.targetContent = nextLines.join('\n');
+                    step.targetLine = lineIdx + 1;
+                    step.instructions = "Delete one line (dd).";
+                    step.initialCursor = { line: lineIdx + 1, col: 1 };
+                }
+
+                step.initialContent = currentContent;
+                steps.push(step);
+                currentContent = step.targetContent;
+            }
+            return { steps };
+        },
+        timePar: 50000,
+        keyPressesPar: 40
     }
 ];
 
@@ -639,6 +714,118 @@ export function getChallengeList() {
         keyPressesPar: c.keyPressesPar
     }));
 }
+
+// --- Vim Logic Helpers ---
+
+const VimLogic = {
+    isKeyword: (char) => /[a-zA-Z0-9_]/.test(char),
+
+    getLineLength: (lines, line) => {
+        if (line < 0 || line >= lines.length) return 0;
+        return lines[line].length;
+    },
+
+    getChar: (lines, line, col) => {
+        if (line < 0 || line >= lines.length) return null;
+        const l = lines[line];
+        if (col < 0 || col >= l.length) return null;
+        return l[col];
+    },
+
+    // Move logic reused/adapted from Challenge 4
+    move: (pos, type, count, lines) => {
+        let current = { ...pos };
+        for (let c = 0; c < count; c++) {
+            current = VimLogic.singleMove(current, type, lines);
+        }
+        return current;
+    },
+
+    singleMove: (pos, type, lines) => {
+        let { line, col } = pos;
+        const lineStr = lines[line];
+        const MAX_LINE = lines.length - 1;
+
+        const getType = (l, c) => {
+            if (c >= VimLogic.getLineLength(lines, l)) return 0; // EOL/Empty
+            const char = VimLogic.getChar(lines, l, c);
+            if (char === ' ' || char === '\t') return 0; // Space
+            if (VimLogic.isKeyword(char)) return 1; // Keyword
+            return 2; // Symbol
+        };
+
+        const advance = (l, c) => {
+            c++;
+            if (c >= VimLogic.getLineLength(lines, l)) {
+                if (l < MAX_LINE) return { l: l + 1, c: 0, wrapped: true };
+                return { l, c: VimLogic.getLineLength(lines, l) - 1, eof: true };
+            }
+            return { l, c };
+        };
+
+        const isSpace = (l, c) => {
+            if (VimLogic.getLineLength(lines, l) === 0) return true;
+            if (c >= VimLogic.getLineLength(lines, l)) return true;
+            const char = VimLogic.getChar(lines, l, c);
+            return char === ' ' || char === '\t';
+        };
+
+        switch (type) {
+            case 'w':
+                if (VimLogic.getLineLength(lines, line) === 0) {
+                    if (line < MAX_LINE) { line++; col = 0; }
+                } else {
+                    let currType = getType(line, col);
+                    let p = { l: line, c: col };
+                    // If on a word/symbol, scan to end of it
+                    if (currType !== 0) {
+                        while (true) {
+                            const next = advance(p.l, p.c);
+                            if (next.eof || next.wrapped) { p = next; break; }
+                            p = next;
+                            if (getType(p.l, p.c) !== currType) break;
+                        }
+                    }
+                    // Then scan through spaces
+                    while (true) {
+                        if (p.l === MAX_LINE && p.c === VimLogic.getLineLength(lines, p.l) - 1) break;
+                        if (getType(p.l, p.c) !== 0) break;
+                        const next = advance(p.l, p.c);
+                        if (next.eof) { p = next; break; }
+                        p = next;
+                    }
+                    line = p.l; col = p.c;
+                }
+                break;
+            case 'W':
+                let p = { l: line, c: col };
+                if (VimLogic.getLineLength(lines, line) === 0) {
+                    if (line < MAX_LINE) { line++; col = 0; }
+                } else {
+                    // If on non-space, scan to end of WORD (space)
+                    if (!isSpace(p.l, p.c)) {
+                        while (true) {
+                            const next = advance(p.l, p.c);
+                            if (next.eof || next.wrapped) { p = next; break; }
+                            p = next;
+                            if (isSpace(p.l, p.c)) break;
+                        }
+                    }
+                    // Then scan through spaces
+                    while (true) {
+                        if (p.l === MAX_LINE && p.c === VimLogic.getLineLength(lines, p.l) - 1) break;
+                        if (!isSpace(p.l, p.c)) break;
+                        const next = advance(p.l, p.c);
+                        if (next.eof) { p = next; break; }
+                        p = next;
+                    }
+                    line = p.l; col = p.c;
+                }
+                break;
+        }
+        return { line, col };
+    }
+};
 
 export function generateChallenge(challengeId, seed) {
     const challenge = challenges.find(c => c.id === challengeId);

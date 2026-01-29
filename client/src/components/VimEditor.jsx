@@ -270,7 +270,7 @@ function VimEditor({
         let isLineDeletion = false;
         let targetLines = [];
 
-        if (targetContent && initialContent !== targetContent) {
+        if (targetContent && initialContent !== targetContent && !highlightWord) {
             const initialLines = initialContent.split('\n');
             const targetLines = targetContent.split('\n');
 
