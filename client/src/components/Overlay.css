@@ -1,0 +1,46 @@
+/* Overlay styles */
+.vim-overlay-container {
+    position: absolute;
+    pointer-events: none;
+    z-index: 100;
+    transition: top 0.1s ease-out, left 0.1s ease-out;
+}
+
+.vim-overlay-pointer {
+    position: absolute;
+    width: 2px;
+    background-color: #fbbf24;
+    /* Keeping consistent with change-match color */
+    height: 20px;
+    /* Adjust based on line height */
+    top: 0;
+    left: 0;
+}
+
+.vim-overlay-text {
+    position: absolute;
+    background-color: rgba(26, 26, 46, 0.95);
+    border: 1px solid #fbbf24;
+    color: #fbbf24;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-family: sans-serif;
+    white-space: nowrap;
+    top: -30px;
+    /* Position above the pointer */
+    left: 50%;
+    transform: translateX(-50%);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+.vim-overlay-text::after {
+    content: '';
+    position: absolute;
+    bottom: -5px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-width: 5px 5px 0;
+    border-style: solid;
+    border-color: #fbbf24 transparent transparent transparent;
+}

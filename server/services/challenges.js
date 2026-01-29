@@ -295,6 +295,11 @@ const challenges = [
                     step.highlightWord = targetWord;
                     step.initialContent = currentContent;
                     step.targetContent = nextLines.join('\n');
+                    step.overlays = [{
+                        line: targetLineIdx + 1,
+                        col: lineContent.indexOf(targetWord) + 1,
+                        text: `Change to "${newWord}"`
+                    }];
                     currentContent = step.targetContent;
                 } else {
                     // Surprise: Indent or Surround? Let's do Surround with parenthesis/quotes?
@@ -310,6 +315,11 @@ const challenges = [
                     step.highlightType = 'change';
                     step.initialContent = currentContent;
                     step.targetContent = nextLines.join('\n');
+                    step.overlays = [{
+                        line: targetLineIdx + 1,
+                        col: lineContent.length + 1,
+                        text: `Append "${suffix.trim()}"`
+                    }];
                     currentContent = step.targetContent;
                 }
                 steps.push(step);

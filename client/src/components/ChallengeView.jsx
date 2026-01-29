@@ -338,6 +338,7 @@ function ChallengeView() {
                         onKeystroke={handleKeystroke}
                         onStepComplete={handleStepComplete}
                         initialCursor={challenge?.initialCursor}
+                        overlays={challenge?.overlays}
                         disabled={submitting || intermission}
                     />
                 )}

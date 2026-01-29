@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useLayoutEffect } from 'react';
+import './Overlay.css';
 import { EditorView, keymap, lineNumbers, Decoration } from '@codemirror/view';
 import { EditorState, StateField, StateEffect } from '@codemirror/state';
 import { defaultKeymap, history } from '@codemirror/commands';
@@ -81,6 +82,8 @@ const darkTheme = EditorView.theme({
     },
 }, { dark: true });
 
+const EMPTY_OVERLAYS = [];
+
 function VimEditor({
     initialContent,
     targetContent,
@@ -95,7 +98,9 @@ function VimEditor({
     targetWord,
     highlightColumn,
     deleteCount,
+
     initialCursor = null,
+    overlays = EMPTY_OVERLAYS,
     disabled = false
 }) {
     const editorRef = useRef(null);
@@ -105,6 +110,7 @@ function VimEditor({
     const [mode, setMode] = useState('NORMAL');
     const [cursorPos, setCursorPos] = useState({ line: 1, col: 1 });
     const [keystrokeCount, setKeystrokeCount] = useState(0);
+    const [overlayPositions, setOverlayPositions] = useState([]);
 
     // Record keystroke with timestamp
     const recordKeystroke = useCallback((key) => {
@@ -213,6 +219,10 @@ function VimEditor({
                 event.preventDefault();
                 return true;
             },
+            scroll: () => {
+                // Trigger overlay update on scroll
+                updateOverlayPositions();
+            }
         });
 
         // Effect to update visual cues
@@ -428,6 +438,9 @@ function VimEditor({
             try {
                 // Convert 1-indexed line/col to offset
                 const lineInfo = view.state.doc.line(initialCursor.line);
+                if (!lineInfo) return; // Guard clause
+
+                // Ensure column is within bounds
                 // Ensure column is within bounds
                 const col = Math.min(Math.max(1, initialCursor.col), lineInfo.length + 1);
                 const offset = lineInfo.from + col - 1;
@@ -495,6 +508,82 @@ function VimEditor({
         };
     }, [initialContent, disabled, onContentChange, recordKeystroke, highlightWord, targetLine, highlightType, initialCursor, deleteCount]);
 
+
+
+    const updateOverlayPositions = useCallback(() => {
+        if (!viewRef.current || !overlays || overlays.length === 0) {
+            setOverlayPositions([]);
+            return;
+        }
+
+        const view = viewRef.current;
+        const positions = [];
+
+        overlays.forEach((overlay) => {
+            try {
+                // Determine position
+                // If line/col provided
+                if (overlay.line && overlay.col) {
+                    const doc = view.state.doc;
+                    if (overlay.line <= doc.lines) {
+                        const lineInfo = doc.line(overlay.line);
+                        // 1-indexed col for the overlay prop inputs, but let's be careful.
+                        // Usually we use 1-indexed for these challenges.
+                        // CodeMirror likes offsets.
+                        const colIndex = overlay.col - 1; // Convert 1-indexed to 0-indexed
+                        const pos = Math.min(lineInfo.from + colIndex, lineInfo.to);
+
+                        const coords = view.coordsAtPos(pos);
+                        if (coords) {
+                            // Coords are relative to viewport, but we're rendering absolute in container
+                            // We need to adjust for the editor's bounding rect
+                            const editorRect = view.dom.getBoundingClientRect();
+
+                            positions.push({
+                                top: coords.top - editorRect.top,
+                                left: coords.left - editorRect.left,
+                                text: overlay.text,
+                                key: `${overlay.line}-${overlay.col}`
+                            });
+                        }
+                    }
+                }
+            } catch (e) {
+                console.warn("Error calculating overlay position", e);
+            }
+        });
+
+        // Only update if changed visually - simpler check: if length is 0 and was 0
+        if (positions.length === 0 && overlayPositions.length === 0) return;
+
+        // Deep comparison or just blindly set? 
+        // To be safe against loops, let's at least compare lengths or stringify keys
+        const keys = positions.map(p => p.key).join(',');
+        const currentKeys = overlayPositions.map(p => p.key).join(',');
+
+        if (keys !== currentKeys || positions.length !== overlayPositions.length) {
+            setOverlayPositions(positions);
+        }
+
+    }, [overlays]);
+
+    // Update overlays when content changes or window resizes
+    useLayoutEffect(() => {
+        updateOverlayPositions();
+        window.addEventListener('resize', updateOverlayPositions);
+        return () => window.removeEventListener('resize', updateOverlayPositions);
+    }, [updateOverlayPositions, cursorPos, initialContent]); // Re-calc on cursor move too? Maybe overkill but safe. Content change will trigger via effect dependencies?
+    // Actually the initial useEffect creates the view. content change updates the doc.
+    // We should probably hook into the updateListener to trigger this, but let's try with what we have.
+    // The viewRef is stable.
+
+    // Add a specific effect to update overlays when content prop changes (new step)
+    useEffect(() => {
+        // give it a tick for layout
+        setTimeout(updateOverlayPositions, 50);
+    }, [initialContent, overlays, updateOverlayPositions]);
+
+
     // Reset keystrokes when content changes
     useEffect(() => {
         // Do not reset keystrokes between steps automatically if we want to track total time via backend
@@ -524,7 +613,18 @@ function VimEditor({
                 ref={editorRef}
                 className="vim-editor"
                 style={{ opacity: disabled ? 0.5 : 1 }}
-            />
+            >
+                {overlayPositions.map((pos) => (
+                    <div
+                        key={pos.key}
+                        className="vim-overlay-container"
+                        style={{ top: pos.top, left: pos.left }}
+                    >
+                        <div className="vim-overlay-pointer"></div>
+                        {pos.text && <div className="vim-overlay-text">{pos.text}</div>}
+                    </div>
+                ))}
+            </div>
 
             {highlightWord && (
                 <div className="target-hint">
