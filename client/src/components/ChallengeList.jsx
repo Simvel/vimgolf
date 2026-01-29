@@ -70,67 +70,34 @@ function ChallengeList() {
     return (
         <div className="challenge-list">
             <div className="challenge-header">
-                <h1>🎯 VimGolf CTF</h1>
-                <p className="subtitle">Master Vim. Beat the clock. Climb the leaderboard.</p>
+                <h1>Vim Speed Golf</h1>
+                <p className="subtitle">Kompetensdagen februari</p>
+
+                <div className="header-actions">
+                    <Link to="/leaderboard" className="link-btn leaderboard-btn">
+                        🏆 View Leaderboard
+                    </Link>
+                </div>
             </div>
 
-            <div className="filter-bar">
-                <button
-                    className={`filter-btn ${filter === 'all' ? 'active' : ''}`}
-                    onClick={() => setFilter('all')}
-                >
-                    All ({challenges.length})
-                </button>
-                <button
-                    className={`filter-btn filter-easy ${filter === 'easy' ? 'active' : ''}`}
-                    onClick={() => setFilter('easy')}
-                >
-                    {difficultyEmoji.easy} Easy ({challenges.filter(c => c.difficulty === 'easy').length})
-                </button>
-                <button
-                    className={`filter-btn filter-medium ${filter === 'medium' ? 'active' : ''}`}
-                    onClick={() => setFilter('medium')}
-                >
-                    {difficultyEmoji.medium} Medium ({challenges.filter(c => c.difficulty === 'medium').length})
-                </button>
-                <button
-                    className={`filter-btn filter-hard ${filter === 'hard' ? 'active' : ''}`}
-                    onClick={() => setFilter('hard')}
-                >
-                    {difficultyEmoji.hard} Hard ({challenges.filter(c => c.difficulty === 'hard').length})
-                </button>
-            </div>
-
-            {filter === 'all' ? (
-                <>
-                    {Object.entries(groupedChallenges).map(([difficulty, items]) => (
-                        items.length > 0 && (
-                            <div key={difficulty} className="difficulty-section">
-                                <h2 className="difficulty-title" style={{ color: difficultyColors[difficulty] }}>
-                                    {difficultyEmoji[difficulty]} {difficulty.charAt(0).toUpperCase() + difficulty.slice(1)}
-                                </h2>
-                                <div className="challenges-grid">
-                                    {items.map(challenge => (
-                                        <ChallengeCard key={challenge.id} challenge={challenge} />
-                                    ))}
-                                </div>
-                            </div>
-                        )
-                    ))}
-                </>
+            {loading ? (
+                <div className="loading-container">
+                    <div className="loading-spinner"></div>
+                    <p>Loading challenges...</p>
+                </div>
+            ) : error ? (
+                <div className="error-container">
+                    <h2>⚠️ Error</h2>
+                    <p>{error}</p>
+                    <button onClick={fetchChallenges}>Retry</button>
+                </div>
             ) : (
                 <div className="challenges-grid">
-                    {filteredChallenges.map(challenge => (
+                    {challenges.map(challenge => (
                         <ChallengeCard key={challenge.id} challenge={challenge} />
                     ))}
                 </div>
             )}
-
-            <div className="quick-links">
-                <Link to="/leaderboard" className="link-btn">
-                    🏆 View Leaderboard
-                </Link>
-            </div>
         </div>
     );
 }

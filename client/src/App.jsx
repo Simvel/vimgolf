@@ -7,6 +7,7 @@ import './index.css';
 function App() {
   return (
     <Router>
+      <div className="background-overlay" />
       <div className="app">
         <Routes>
           <Route path="/" element={<ChallengeList />} />
