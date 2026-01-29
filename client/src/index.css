@@ -1079,7 +1079,7 @@ body {
 }
 
 .intermission-content h2 {
-  color: var(--accent-green);
+  color: var(--accent-olive);
   font-size: 2rem;
   margin-bottom: var(--spacing-sm);
 }
