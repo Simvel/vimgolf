@@ -94,6 +94,7 @@ function VimEditor({
     targetValue,
     targetWord,
     highlightColumn,
+    deleteCount,
     initialCursor = null,
     disabled = false
 }) {
@@ -265,12 +266,25 @@ function VimEditor({
             }
         }
 
+        // Explicit deletion highlighting (Smart Deletion)
+        if (highlightType === 'delete' && targetLine && deleteCount) {
+            for (let i = 0; i < deleteCount; i++) {
+                const currentLineNum = targetLine + i;
+                if (currentLineNum <= doc.lines) {
+                    const l = doc.line(currentLineNum);
+                    initialDecorations.push(
+                        Decoration.line({ class: 'cm-delete-line' }).range(l.from)
+                    );
+                }
+            }
+        }
+
         // For deletion/edit challenges: compute diff and highlight differences
         // Pre-calculate targetLines and isLineDeletion
         let isLineDeletion = false;
         let targetLines = [];
 
-        if (targetContent && initialContent !== targetContent && !highlightWord) {
+        if (targetContent && initialContent !== targetContent && !highlightWord && !deleteCount) {
             const initialLines = initialContent.split('\n');
             const targetLines = targetContent.split('\n');
 
@@ -479,7 +493,7 @@ function VimEditor({
             currentEditor?.removeEventListener('keydown', handleKeyDown, true);
             view.destroy();
         };
-    }, [initialContent, disabled, onContentChange, recordKeystroke, highlightWord, targetLine, highlightType, initialCursor]);
+    }, [initialContent, disabled, onContentChange, recordKeystroke, highlightWord, targetLine, highlightType, initialCursor, deleteCount]);
 
     // Reset keystrokes when content changes
     useEffect(() => {

@@ -118,7 +118,12 @@ function ChallengeView() {
                 setSession(prev => ({
                     ...prev,
                     challenge: {
-                        ...prev.challenge,
+                        // Preserve static challenge metadata
+                        id: prev.challenge.id,
+                        name: prev.challenge.name,
+                        difficulty: prev.challenge.difficulty,
+                        description: prev.challenge.description,
+                        // Replace all step-specific data with new step
                         ...result.step
                     }
                 }));
@@ -329,6 +334,7 @@ function ChallengeView() {
                         targetValue={challenge?.targetValue}
                         targetWord={challenge?.targetWord}
                         highlightColumn={challenge?.highlightColumn}
+                        deleteCount={challenge?.deleteCount}
                         onKeystroke={handleKeystroke}
                         onStepComplete={handleStepComplete}
                         initialCursor={challenge?.initialCursor}

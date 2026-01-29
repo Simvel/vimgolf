@@ -598,14 +598,15 @@ const challenges = [
         generate: (seed) => {
             const steps = [];
             let currentContent = EXPANDED_CODE_SAMPLE;
-            const numSteps = 6;
+            // Track cursor position to persist across steps
+            let currentCursor = { line: 1, col: 1 };
+            const numSteps = 5;
 
             for (let i = 0; i < numSteps; i++) {
                 const stepSeed = seed + i * 222;
                 const lines = currentContent.split('\n');
 
                 const operations = ['dd', '2dd', '3dd', 'dw', '2dw', 'dW', '2dW'];
-                // Weighted selection? Or pure random.
                 const op = operations[randomInRange(stepSeed, 0, operations.length - 1)];
 
                 let step = {
@@ -618,48 +619,67 @@ const challenges = [
 
                 while (!validMove && attempts < 50) {
                     attempts++;
-                    // Pick random start line (0-indexed for logic)
-                    const lineIdx = randomInRange(stepSeed + attempts, 0, lines.length - 1);
-                    if (lines[lineIdx].trim() === '') continue; // Skip empty lines for interesting deletions
 
-                    // For line deletions
+                    // Pick a random line to target
+                    let lineIdx = randomInRange(stepSeed + attempts, 0, lines.length - 1);
+                    if (lines[lineIdx] === undefined) continue;
+
+                    // Line Deletion (dd, 2dd, 3dd)
                     if (op.includes('dd')) {
                         const count = op.startsWith('d') ? 1 : parseInt(op[0]);
                         if (lineIdx + count <= lines.length) {
-                            // Perform deletion
                             step.targetLine = lineIdx + 1;
-                            step.instructions = `Delete ${count === 1 ? 'one line' : count + ' lines'} (${op}).`;
-                            step.initialCursor = { line: lineIdx + 1, col: 1 };
+                            step.deleteCount = count; // Used for multi-line highlighting
+                            step.instructions = `Delete ${count === 1 ? 'one line' : count + ' lines'} at Line ${lineIdx + 1} (${op}).`;
 
+                            // Calculate new content
                             const nextLines = [...lines];
                             nextLines.splice(lineIdx, count);
                             step.targetContent = nextLines.join('\n');
 
+                            // Set initial cursor for this step (persisted from previous)
+                            step.initialCursor = { ...currentCursor };
+
+                            // Update currentCursor for the NEXT step
+                            // After dd, cursor lands on the line that replaced the deleted one (same index), or EOF.
+                            let newLineIdx = Math.min(lineIdx, nextLines.length - 1);
+                            if (nextLines.length === 0) newLineIdx = 0;
+                            currentCursor = { line: newLineIdx + 1, col: 1 };
+
                             validMove = true;
                         }
                     } else {
-                        // Word deletions (dw, 2dw, dW, 2dW)
+                        // Word Deletion (dw, dW)
                         const count = op.length === 2 ? 1 : parseInt(op[0]);
                         const type = op.includes('W') ? 'W' : 'w';
 
-                        // Pick random column. Prefer non-space to start?
                         const lineLen = lines[lineIdx].length;
                         if (lineLen === 0) continue;
 
-                        const colIdx = randomInRange(stepSeed + attempts * 2, 0, lineLen - 1);
+                        // Find valid word starts to ensure clean targets
+                        const validStarts = [];
+                        for (let c = 0; c < lineLen; c++) {
+                            if (VimLogic.isWordStart(lines, lineIdx, c, type)) {
+                                validStarts.push(c);
+                            }
+                        }
 
-                        // Simulate `dw` / `dW`
+                        if (validStarts.length === 0) continue;
+
+                        // Pick a random valid word start
+                        const colIdx = validStarts[randomInRange(stepSeed + attempts, 0, validStarts.length - 1)];
+
                         const startPos = { line: lineIdx, col: colIdx };
                         const endPos = VimLogic.move(startPos, type, count, lines);
 
-                        // Constrain to single-line deletions for better UI highlighting initially
+                        // Constraints for clarity:
+                        // 1. Don't cross line boundaries (keep it simple for now)
                         if (endPos.line !== lineIdx) continue;
-
-                        // Calculate text validity (should not be empty)
-                        if (endPos.col <= colIdx) continue; // Should have moved forward
+                        // 2. Must delete something
+                        if (endPos.col <= colIdx) continue;
 
                         const textToDelete = lines[lineIdx].substring(colIdx, endPos.col);
-                        if (textToDelete.length === 0) continue;
+                        if (textToDelete.trim().length === 0) continue; // Avoid invisible targets
 
                         // Construct target content
                         const newLine = lines[lineIdx].substring(0, colIdx) + lines[lineIdx].substring(endPos.col);
@@ -670,27 +690,37 @@ const challenges = [
                         step.targetLine = lineIdx + 1;
                         step.highlightColumn = colIdx;
 
-                        // Escape regex special characters for highlighting
                         const escapedText = textToDelete.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
                         step.highlightWord = escapedText;
 
                         const unit = type === 'W' ? 'WORD' : 'word';
-                        step.instructions = `Delete ${count === 1 ? 'one ' + unit : count + ' ' + unit + 's'} (${op}).`;
-                        step.initialCursor = { line: lineIdx + 1, col: colIdx + 1 };
+                        step.instructions = `Delete ${count === 1 ? 'one ' + unit : count + ' ' + unit + 's'} ("${textToDelete.trim()}") at Line ${lineIdx + 1} (${op}).`;
+
+                        step.initialCursor = { ...currentCursor };
+
+                        // Update cursor for next step: it stays at the cut point
+                        currentCursor = { line: lineIdx + 1, col: colIdx + 1 };
 
                         validMove = true;
                     }
                 }
 
                 if (!validMove) {
-                    // Fallback to simple dd
+                    // Fallback
                     const lineIdx = 5;
                     const nextLines = [...lines];
                     nextLines.splice(lineIdx, 1);
                     step.targetContent = nextLines.join('\n');
                     step.targetLine = lineIdx + 1;
-                    step.instructions = "Delete one line (dd).";
-                    step.initialCursor = { line: lineIdx + 1, col: 1 };
+                    step.instructions = "Delete line 6 (dd).";
+                    step.deleteCount = 1;
+                    step.initialCursor = { ...currentCursor };
+                    currentCursor = { line: lineIdx + 1, col: 1 };
+                }
+
+                // Override first step cursor to be deterministic (1,1)
+                if (i === 0) {
+                    step.initialCursor = { line: 1, col: 1 };
                 }
 
                 step.initialContent = currentContent;
@@ -741,18 +771,46 @@ const VimLogic = {
         return current;
     },
 
+    getType: (lines, l, c) => {
+        if (c >= VimLogic.getLineLength(lines, l)) return 0; // EOL/Empty
+        const char = VimLogic.getChar(lines, l, c);
+        if (char === ' ' || char === '\t') return 0; // Space
+        if (VimLogic.isKeyword(char)) return 1; // Keyword
+        return 2; // Symbol
+    },
+
+    // Check if position is start of a word/WORD
+    isWordStart: (lines, l, c, type) => {
+        if (c === 0) return true;
+        const currType = VimLogic.getType(lines, l, c);
+        const prevType = VimLogic.getType(lines, l, c - 1);
+
+        if (type === 'W') {
+            // WORD stores: Space (0) vs Non-Space (1 or 2).
+            // Start if current is Non-Space and prev is Space.
+            const currIsSpace = currType === 0;
+            const prevIsSpace = prevType === 0;
+            return !currIsSpace && prevIsSpace;
+        } else {
+            // word match:
+            // 1. Space -> Non-Space
+            // 2. Keyword -> Symbol
+            // 3. Symbol -> Keyword
+            // Basically change in type, excluding Space->Space
+            if (currType === 0) return false; // Space is never start of "word" (in this context?) 
+            // Actually, 'w' lands on first char of word.
+
+            if (prevType === 0 && currType !== 0) return true; // Space -> Word
+            if (prevType === 1 && currType === 2) return true; // Keyword -> Symbol
+            if (prevType === 2 && currType === 1) return true; // Symbol -> Keyword
+            return false;
+        }
+    },
+
     singleMove: (pos, type, lines) => {
         let { line, col } = pos;
         const lineStr = lines[line];
         const MAX_LINE = lines.length - 1;
-
-        const getType = (l, c) => {
-            if (c >= VimLogic.getLineLength(lines, l)) return 0; // EOL/Empty
-            const char = VimLogic.getChar(lines, l, c);
-            if (char === ' ' || char === '\t') return 0; // Space
-            if (VimLogic.isKeyword(char)) return 1; // Keyword
-            return 2; // Symbol
-        };
 
         const advance = (l, c) => {
             c++;
@@ -769,6 +827,8 @@ const VimLogic = {
             const char = VimLogic.getChar(lines, l, c);
             return char === ' ' || char === '\t';
         };
+
+        const getType = (l, c) => VimLogic.getType(lines, l, c);
 
         switch (type) {
             case 'w':
