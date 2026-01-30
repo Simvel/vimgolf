@@ -543,6 +543,7 @@ function VimEditor({
                                 top: coords.top - editorRect.top,
                                 left: coords.left - editorRect.left,
                                 text: overlay.text,
+                                type: overlay.type,
                                 key: `${overlay.line}-${overlay.col}`
                             });
                         }
@@ -620,8 +621,16 @@ function VimEditor({
                         className="vim-overlay-container"
                         style={{ top: pos.top, left: pos.left }}
                     >
-                        <div className="vim-overlay-pointer"></div>
-                        {pos.text && <div className="vim-overlay-text">{pos.text}</div>}
+                        {pos.type === 'horizontal' ? (
+                            <div className="vim-overlay-pointer-horizontal"></div>
+                        ) : (
+                            <div className="vim-overlay-pointer"></div>
+                        )}
+                        {pos.text && (
+                            <div className={pos.type === 'horizontal' ? "vim-overlay-text-horizontal" : "vim-overlay-text"}>
+                                {pos.text}
+                            </div>
+                        )}
                     </div>
                 ))}
             </div>

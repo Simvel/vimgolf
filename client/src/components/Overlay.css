@@ -13,7 +13,17 @@
     /* Keeping consistent with change-match color */
     height: 20px;
     /* Adjust based on line height */
-    top: 0;
+    top: 15px;
+    left: 0;
+}
+
+.vim-overlay-pointer-horizontal {
+    position: absolute;
+    width: 60px;
+    height: 2px;
+    background-color: #fbbf24;
+    top: 35px;
+    /* Align with BOTTOM of the character cell (between lines) */
     left: 0;
 }
 
@@ -43,4 +53,34 @@
     border-width: 5px 5px 0;
     border-style: solid;
     border-color: #fbbf24 transparent transparent transparent;
+}
+
+/* Horizontal variation for text: Place to the right */
+.vim-overlay-text-horizontal {
+    position: absolute;
+    background-color: rgba(26, 26, 46, 0.95);
+    border: 1px solid #fbbf24;
+    color: #fbbf24;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-family: sans-serif;
+    white-space: nowrap;
+    top: 10px;
+    /* Vertically center relative to the 2px line (which is at top:20px) -> top: 20px - height/2? */
+    /* Let's place it slightly below or inline. top:10px is halfway down line height. */
+    left: 70px;
+    /* Right of the 60px pointer */
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+.vim-overlay-text-horizontal::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: -5px;
+    transform: translateY(-50%);
+    border-width: 5px 5px 5px 0;
+    border-style: solid;
+    border-color: transparent #fbbf24 transparent transparent;
 }

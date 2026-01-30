@@ -46,6 +46,11 @@ function applyDiscount(total, code) {
 
 displayCart(shoppingCart);`;
 
+const LOREM_IPSUM = `Lorem ipsum dolor sit amet, consectetur adipiscing elit.
+Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.
+Nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor.`;
+
 const NAV_MIX_CODE = `function calculateMetric(data) {
     let result = 0;
     const factor = 1.5;
@@ -737,6 +742,162 @@ const challenges = [
                 steps.push(step);
                 currentContent = step.targetContent;
             }
+            return { steps };
+        },
+        timePar: 50000,
+        keyPressesPar: 40
+    },
+    {
+        id: 6,
+        name: "Yank & Paste",
+        difficulty: "medium",
+        description: "Yank (copy) text and paste it in specific locations.",
+        generate: (seed) => {
+            const steps = [];
+            let currentContent = LOREM_IPSUM;
+            const numSteps = 5;
+
+            for (let i = 0; i < numSteps; i++) {
+                const stepSeed = seed + i * 333;
+                const lines = currentContent.split('\n');
+
+                // Decide what to yank: a word or a whole line
+                const type = i % 2 === 0 ? 'word' : 'line';
+
+                let sourceLineIdx = randomInRange(stepSeed, 0, lines.length - 1);
+                let destLineIdx = sourceLineIdx;
+                let attempts = 0;
+                while (destLineIdx === sourceLineIdx && attempts < 100) {
+                    attempts++;
+                    destLineIdx = randomInRange(stepSeed + attempts + 100, 0, lines.length - 1);
+                }
+
+                const step = {
+                    checkType: 'content_match',
+                    highlightType: 'target' // Light green for source
+                };
+
+                if (type === 'line') {
+                    // Yank whole line (yy) and paste (p)
+                    // We paste AFTER the pointer line. 
+                    const contentToYank = lines[sourceLineIdx];
+                    step.instructions = `Yank line ${sourceLineIdx + 1} (yy) and paste it after line ${destLineIdx + 1} (p).`;
+                    step.targetLine = sourceLineIdx + 1;
+
+                    const pasteContent = contentToYank;
+                    const truncatedPaste = pasteContent.length > 20 ? pasteContent.substring(0, 20) + '...' : pasteContent;
+
+                    const nextLines = [...lines];
+                    nextLines.splice(destLineIdx + 1, 0, contentToYank);
+                    step.targetContent = nextLines.join('\n');
+
+                    // Horizontal pointer at the destination line
+                    // CSS positions it at the bottom of this line (between lines)
+                    // User feedback: "one line offset above". So we target the line AFTER the gap.
+                    const overlayLine = Math.min(destLineIdx + 2, lines.length);
+
+                    step.overlays = [{
+                        line: overlayLine,
+                        col: 1,
+                        text: `Paste line here`,
+                        type: 'horizontal'
+                    }];
+
+                } else {
+                    // Yank word (yiw) and paste between words
+                    const sourceLine = lines[sourceLineIdx];
+                    const wordsMap = [];
+                    const wordRegex = /\b\w+\b/g;
+                    let match;
+                    while ((match = wordRegex.exec(sourceLine)) !== null) {
+                        if (match[0].length > 3) {
+                            wordsMap.push({ word: match[0], index: match.index });
+                        }
+                    }
+
+                    // Find a destination with multiple words to paste between
+                    let destLineWithGap = -1;
+                    let gapIndex = -1;
+                    let attempts = 0;
+
+                    while (destLineWithGap === -1 && attempts < 50) {
+                        const idx = randomInRange(stepSeed + attempts, 0, lines.length - 1);
+                        const line = lines[idx];
+                        // Find a space between words
+                        const gaps = [];
+                        const spaceRegex = /\w+( )+\w+/g;
+                        let gapMatch;
+                        while ((gapMatch = spaceRegex.exec(line)) !== null) {
+                            // The space is roughly in the middle of the match
+                            // We want the index of the space
+                            const spaceIdx = line.indexOf(' ', gapMatch.index);
+                            if (spaceIdx !== -1) gaps.push(spaceIdx);
+                        }
+
+                        if (gaps.length > 0) {
+                            destLineWithGap = idx;
+                            gapIndex = gaps[randomInRange(stepSeed, 0, gaps.length - 1)];
+                        }
+                        attempts++;
+                    }
+
+                    if (wordsMap.length === 0 || destLineWithGap === -1) {
+                        // Fallback to line yank
+                        const contentToYank = lines[sourceLineIdx];
+                        step.instructions = `Yank line ${sourceLineIdx + 1} and paste it after line ${destLineIdx + 1}.`;
+                        step.targetLine = sourceLineIdx + 1;
+                        const nextLines = [...lines];
+                        nextLines.splice(destLineIdx + 1, 0, contentToYank);
+                        step.targetContent = nextLines.join('\n');
+                        step.overlays = [{
+                            line: destLineIdx + 1,
+                            col: 1,
+                            text: `Paste line here`,
+                            type: 'horizontal'
+                        }];
+                    } else {
+                        const targetObj = wordsMap[randomInRange(stepSeed, 0, wordsMap.length - 1)];
+                        const wordToYank = targetObj.word;
+
+                        step.instructions = `Yank "${wordToYank}" (yiw) and paste it on line ${destLineWithGap + 1} between words (at marker).`;
+                        step.highlightWord = wordToYank;
+                        step.highlightColumn = targetObj.index;
+                        step.targetLine = sourceLineIdx + 1;
+
+                        // Calculate target content
+                        // Inserting ' ' + word at the gap position (after the space)
+                        // If gapIndex points to the space char.
+                        // "Word1 Word2". Gap at 5.
+                        // "Word1 Word2". Paste "YANK".
+                        // "Word1 YANK Word2".
+                        // So we insert "YANK " at index 6 (space + 1)? 
+                        // Or if cursor is ON space (index 5). `p` pastes AFTER cursor -> index 6.
+                        // Result: "Word1 " + "YANK" + " " + "Word2" -> "Word1 YANK Word2".
+                        // So we need to insert "YANK " (with trailing space)
+
+                        const destLine = lines[destLineWithGap];
+                        const prefix = destLine.substring(0, gapIndex + 1); // "Word1 "
+                        const suffix = destLine.substring(gapIndex + 1);    // "Word2"
+                        const newDestLine = prefix + wordToYank + " " + suffix;
+
+                        const nextLines = [...lines];
+                        nextLines[destLineWithGap] = newDestLine;
+                        step.targetContent = nextLines.join('\n');
+
+                        // Vertical pointer at the space
+                        step.overlays = [{
+                            line: destLineWithGap + 1,
+                            col: gapIndex + 1, // Point to the space
+                            text: `Paste "${wordToYank}" here`
+                        }];
+                    }
+                }
+
+                step.initialContent = currentContent;
+                currentContent = step.targetContent;
+                steps.push(step);
+            }
+
             return { steps };
         },
         timePar: 50000,
