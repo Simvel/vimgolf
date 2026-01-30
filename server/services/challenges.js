@@ -793,8 +793,8 @@ const challenges = [
 
                     // Horizontal pointer at the destination line
                     // CSS positions it at the bottom of this line (between lines)
-                    // User feedback: "one line offset above". So we target the line AFTER the gap.
-                    const overlayLine = Math.min(destLineIdx + 2, lines.length);
+                    // For pasting after line N, we point to line N+1's position (even if it doesn't exist yet)
+                    const overlayLine = destLineIdx + 2;
 
                     step.overlays = [{
                         line: overlayLine,

@@ -524,28 +524,36 @@ function VimEditor({
                 // If line/col provided
                 if (overlay.line && overlay.col) {
                     const doc = view.state.doc;
+                    let lineInfo;
+                    let colIndex;
+
                     if (overlay.line <= doc.lines) {
-                        const lineInfo = doc.line(overlay.line);
-                        // 1-indexed col for the overlay prop inputs, but let's be careful.
-                        // Usually we use 1-indexed for these challenges.
-                        // CodeMirror likes offsets.
-                        const colIndex = overlay.col - 1; // Convert 1-indexed to 0-indexed
-                        const pos = Math.min(lineInfo.from + colIndex, lineInfo.to);
+                        lineInfo = doc.line(overlay.line);
+                        colIndex = overlay.col - 1; // Convert 1-indexed to 0-indexed
+                    } else {
+                        // Line is beyond document - position at end of last line
+                        lineInfo = doc.line(doc.lines);
+                        colIndex = 0; // Start of where the "next line" would be
+                    }
 
-                        const coords = view.coordsAtPos(pos);
-                        if (coords) {
-                            // Coords are relative to viewport, but we're rendering absolute in container
-                            // We need to adjust for the editor's bounding rect
-                            const editorRect = view.dom.getBoundingClientRect();
+                    const pos = Math.min(lineInfo.from + colIndex, lineInfo.to);
 
-                            positions.push({
-                                top: coords.top - editorRect.top,
-                                left: coords.left - editorRect.left,
-                                text: overlay.text,
-                                type: overlay.type,
-                                key: `${overlay.line}-${overlay.col}`
-                            });
-                        }
+                    const coords = view.coordsAtPos(pos);
+                    if (coords) {
+                        // Coords are relative to viewport, but we're rendering absolute in container
+                        // We need to adjust for the editor's bounding rect
+                        const editorRect = view.dom.getBoundingClientRect();
+
+                        // If the overlay line is beyond document, offset down by one line height
+                        const extraOffset = overlay.line > doc.lines ? 20 : 0; // approx line height
+
+                        positions.push({
+                            top: coords.top - editorRect.top + extraOffset,
+                            left: coords.left - editorRect.left,
+                            text: overlay.text,
+                            type: overlay.type,
+                            key: `${overlay.line}-${overlay.col}`
+                        });
                     }
                 }
             } catch (e) {
