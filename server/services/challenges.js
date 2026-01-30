@@ -804,91 +804,118 @@ const challenges = [
                     }];
 
                 } else {
-                    // Yank word (yiw) and paste between words
+                    // Yank words (2-4 words with surrounding spaces)
                     const sourceLine = lines[sourceLineIdx];
-                    const wordsMap = [];
-                    const wordRegex = /\b\w+\b/g;
+
+                    // Find sequences of words
+                    const wordsMatch = []; // { text, index, length }
+                    // Match words, we'll group them manually
+                    const allWords = [];
                     let match;
+                    const wordRegex = /\b\w+\b/g;
                     while ((match = wordRegex.exec(sourceLine)) !== null) {
-                        if (match[0].length > 3) {
-                            wordsMap.push({ word: match[0], index: match.index });
-                        }
+                        allWords.push({ word: match[0], index: match.index, end: match.index + match[0].length });
                     }
 
-                    // Find a destination with multiple words to paste between
-                    let destLineWithGap = -1;
-                    let gapIndex = -1;
-                    let attempts = 0;
-
-                    while (destLineWithGap === -1 && attempts < 50) {
-                        const idx = randomInRange(stepSeed + attempts, 0, lines.length - 1);
-                        const line = lines[idx];
-                        // Find a space between words
-                        const gaps = [];
-                        const spaceRegex = /\w+( )+\w+/g;
-                        let gapMatch;
-                        while ((gapMatch = spaceRegex.exec(line)) !== null) {
-                            // The space is roughly in the middle of the match
-                            // We want the index of the space
-                            const spaceIdx = line.indexOf(' ', gapMatch.index);
-                            if (spaceIdx !== -1) gaps.push(spaceIdx);
-                        }
-
-                        if (gaps.length > 0) {
-                            destLineWithGap = idx;
-                            gapIndex = gaps[randomInRange(stepSeed, 0, gaps.length - 1)];
-                        }
-                        attempts++;
-                    }
-
-                    if (wordsMap.length === 0 || destLineWithGap === -1) {
+                    if (allWords.length < 3) {
                         // Fallback to line yank
                         const contentToYank = lines[sourceLineIdx];
-                        step.instructions = `Yank line ${sourceLineIdx + 1} and paste it after line ${destLineIdx + 1}.`;
+                        step.instructions = `Yank line ${sourceLineIdx + 1} (yy) and paste it after line ${destLineIdx + 1} (p).`;
                         step.targetLine = sourceLineIdx + 1;
                         const nextLines = [...lines];
                         nextLines.splice(destLineIdx + 1, 0, contentToYank);
                         step.targetContent = nextLines.join('\n');
+                        const overlayLine = Math.min(destLineIdx + 2, lines.length);
                         step.overlays = [{
-                            line: destLineIdx + 1,
+                            line: overlayLine,
                             col: 1,
                             text: `Paste line here`,
                             type: 'horizontal'
                         }];
                     } else {
-                        const targetObj = wordsMap[randomInRange(stepSeed, 0, wordsMap.length - 1)];
-                        const wordToYank = targetObj.word;
+                        // Pick random length 2-4
+                        const count = randomInRange(stepSeed, 2, Math.min(4, allWords.length - 1));
+                        // Start index
+                        const startIdx = randomInRange(stepSeed + 1, 1, allWords.length - count - 1);
 
-                        step.instructions = `Yank "${wordToYank}" (yiw) and paste it on line ${destLineWithGap + 1} between words (at marker).`;
-                        step.highlightWord = wordToYank;
-                        step.highlightColumn = targetObj.index;
+                        // We need "space before first word" and "space after last word"
+                        // So we need to grab the slice from (firstWord.index - 1) to (lastWord.end + 1)
+                        // Verify bounds/spaces
+                        const firstWord = allWords[startIdx];
+                        const lastWord = allWords[startIdx + count - 1];
+
+                        // Check if spaces exist around selection
+                        const hasSpaceBefore = sourceLine[firstWord.index - 1] === ' ';
+                        const hasSpaceAfter = sourceLine[lastWord.end] === ' ';
+
+                        // We force finding a valid text segment or fallback
+                        if (!hasSpaceBefore || !hasSpaceAfter) {
+                            // Fallback to just yanking words without specific space constraint if rare failure
+                            // Or simpler: just yank the words and spaces between them.
+                            // User requirement: "make sure that the first word has a space before it and the last word has a space after it in this yank segment"
+                            // Let's try to include them if possible.
+                        }
+
+                        // Construct the string to be yanked
+                        // User clarification: segment surrounded by spaces in raw text, but yank EXCLUDES leading space
+                        // So: yank starts at first word, includes trailing space
+                        const yankStart = firstWord.index; // No leading space
+                        const yankEnd = hasSpaceAfter ? lastWord.end + 1 : lastWord.end; // Include trailing space
+                        const textToYank = sourceLine.substring(yankStart, yankEnd);
+
+                        // Destination logic: find a gap
+                        let destLineWithGap = -1;
+                        let gapIndex = -1;
+                        let attempts = 0;
+                        while (destLineWithGap === -1 && attempts < 50) {
+                            const idx = randomInRange(stepSeed + attempts + 200, 0, lines.length - 1);
+                            // Need a line with a space
+                            if (lines[idx].includes(' ')) {
+                                destLineWithGap = idx;
+                                gapIndex = lines[idx].indexOf(' ');
+                            }
+                            attempts++;
+                        }
+
+                        if (destLineWithGap === -1) destLineWithGap = sourceLineIdx; // fallback
+                        if (gapIndex === -1) gapIndex = 0;
+
+                        step.instructions = `Yank "${textToYank}" from line ${sourceLineIdx + 1} and paste it on line ${destLineWithGap + 1} between words.`;
+                        step.highlightWord = textToYank;
+                        step.highlightColumn = yankStart;
                         step.targetLine = sourceLineIdx + 1;
 
                         // Calculate target content
-                        // Inserting ' ' + word at the gap position (after the space)
-                        // If gapIndex points to the space char.
-                        // "Word1 Word2". Gap at 5.
-                        // "Word1 Word2". Paste "YANK".
-                        // "Word1 YANK Word2".
-                        // So we insert "YANK " at index 6 (space + 1)? 
-                        // Or if cursor is ON space (index 5). `p` pastes AFTER cursor -> index 6.
-                        // Result: "Word1 " + "YANK" + " " + "Word2" -> "Word1 YANK Word2".
-                        // So we need to insert "YANK " (with trailing space)
-
                         const destLine = lines[destLineWithGap];
-                        const prefix = destLine.substring(0, gapIndex + 1); // "Word1 "
-                        const suffix = destLine.substring(gapIndex + 1);    // "Word2"
-                        const newDestLine = prefix + wordToYank + " " + suffix;
+                        // Insert at gap. Gap is a space.
+                        // "Word1 Word2". Gap at space (idx 5).
+                        // If we paste ' text ', result: "Word1" + " text " + " Word2" -> "Word1 text  Word2" (double space?)
+                        // User said: "annoying because... target expects a space... with no space after it"
+                        // If we include spaces in yank: " word1 word2 "
+                        // And paste it at a gap?
+                        // "A B". Paste at space between A and B.
+                        // "A" + " word1 word2 " + " B" -> "A word1 word2  B"
+                        // This seems tricky visually.
+                        // Maybe the user implies the Yank should captures the spaces so the Paste is super simple `p`?
+                        // If I yank " word " and paste after "A", I get "A word ". If "B" follows, "A word B". Perfect.
+                        // So I should target a paste position that is NOT a space, but rather the end of a word?
+                        // "A B". Cursor at 'A'. `p` -> "A word B".
+
+                        // Paste AFTER the space. gapIndex is the space char.
+                        // "Lorem ipsum" with gap at index 5 (the space).
+                        // We want: "Lorem " + "et dolore magna " + "ipsum"
+                        // = substring(0, 6) + textToYank + substring(6)
+                        const newDestLine = destLine.substring(0, gapIndex + 1) + textToYank + destLine.substring(gapIndex + 1);
 
                         const nextLines = [...lines];
                         nextLines[destLineWithGap] = newDestLine;
                         step.targetContent = nextLines.join('\n');
 
-                        // Vertical pointer at the space
+                        // Point to the location just before the space (end of previous word)
                         step.overlays = [{
                             line: destLineWithGap + 1,
-                            col: gapIndex + 1, // Point to the space
-                            text: `Paste "${wordToYank}" here`
+                            col: gapIndex + 1, // Visual pos 1-based.
+                            text: `Paste here (p)`
                         }];
                     }
                 }

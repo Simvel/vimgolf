@@ -255,14 +255,13 @@ function VimEditor({
                 // If specific column provided (0-indexed or 1-indexed? Step definition says 0-indexed passed as highlightColumn)
                 // Let's assume passed prop highlightColumn is 0-indexed as per normal usage in this app so far (passed from step.highlightColumn).
                 if (typeof highlightColumn === 'number') {
-                    // Highlight the specific character
-                    // Ensure it's within line bounds
+                    // Highlight the specific range
                     const from = lineInfo.from + highlightColumn;
-                    const to = from + 1; // Highlight single char
+                    // If highlightWord is provided, use its length; otherwise highlight single char
+                    const highlightLen = highlightWord ? highlightWord.length : 1;
+                    const to = from + highlightLen;
 
-                    if (to <= lineInfo.to + 1) { // Allow highlighting slightly past end for EOL?
-                        // Vim EOL is usually just the last char or a special block.
-                        // But usually we just highlight the char at that pos.
+                    if (to <= lineInfo.to + 1) {
                         initialDecorations.push(
                             Decoration.mark({ class: 'cm-target-match' }).range(from, Math.min(to, lineInfo.to))
                         );
@@ -294,98 +293,108 @@ function VimEditor({
         let isLineDeletion = false;
         let targetLines = [];
 
-        if (targetContent && initialContent !== targetContent && !highlightWord && !deleteCount) {
+        if (targetContent && initialContent !== targetContent && !deleteCount) {
             const initialLines = initialContent.split('\n');
             const targetLines = targetContent.split('\n');
 
             // Determine if this is a line deletion (fewer lines in target)
             const isLineDeletion = targetLines.length < initialLines.length;
 
-            // Track character offset in the document
-            let charOffset = 0;
+            // If it's a line insertion (paste) with 'target' highlight, we skip the diff highlighting 
+            // to avoid marking shifted lines as "wrong". But for delete/change we still need diff highlighting.
+            const isLineInsertion = targetLines.length > initialLines.length;
+            const skipDiffForInsertion = isLineInsertion && highlightType === 'target';
 
-            for (let i = 0; i < initialLines.length; i++) {
-                const line = initialLines[i];
-                const lineStart = charOffset;
-                const lineEnd = charOffset + line.length;
+            if (skipDiffForInsertion) {
+                // Do nothing for global diffs on insertion, rely on specific overlays/targets
+            } else {
+                // Track character offset in the document
+                let charOffset = 0;
 
-                if (isLineDeletion) {
-                    // Check if this specific line is being deleted
-                    // A line is deleted if it exists in initial but not in target (exact match)
-                    const lineExistsInTarget = targetLines.includes(line);
+                for (let i = 0; i < initialLines.length; i++) {
+                    const line = initialLines[i];
+                    const lineStart = charOffset;
+                    const lineEnd = charOffset + line.length;
 
-                    if (!lineExistsInTarget && line.trim().length > 0) {
-                        // This entire line is being deleted
-                        initialDecorations.push(
-                            Decoration.line({ class: 'cm-delete-line' }).range(lineStart)
-                        );
-                    }
-                } else {
-                    // Same number of lines - compare line by line for word-level changes
-                    const correspondingTargetLine = targetLines[i] || '';
+                    if (isLineDeletion) {
+                        // Check if this specific line is being deleted
+                        // A line is deleted if it exists in initial but not in target (exact match)
+                        const lineExistsInTarget = targetLines.includes(line);
 
-                    if (correspondingTargetLine !== line) {
-                        // Find the words/characters that are different
-                        // Split by non-word characters to get words and punctuation as separate tokens
-                        const initialWords = line.split(/([^\w]+)/);
-                        const targetWords = correspondingTargetLine.split(/([^\w]+)/);
-                        const targetWordSet = new Set(targetWords);
+                        if (!lineExistsInTarget && line.trim().length > 0) {
+                            // This entire line is being deleted
+                            initialDecorations.push(
+                                Decoration.line({ class: 'cm-delete-line' }).range(lineStart)
+                            );
+                        }
+                    } else if (!highlightWord) {
+                        // Same number of lines - compare line by line for word-level changes
+                        // Skip this if highlightWord is set (use precise highlighting instead)
+                        const correspondingTargetLine = targetLines[i] || '';
 
-                        let wordOffset = lineStart;
-                        for (const word of initialWords) {
-                            if (word !== '' && !targetWordSet.has(word)) {
-                                // This token is being deleted or changed
-                                const className = highlightType === 'change' ? 'cm-change-match' : 'cm-delete-match';
-                                initialDecorations.push(
-                                    Decoration.mark({ class: className }).range(wordOffset, wordOffset + word.length)
-                                );
+                        if (correspondingTargetLine !== line) {
+                            // Find the words/characters that are different
+                            // Split by non-word characters to get words and punctuation as separate tokens
+                            const initialWords = line.split(/([^\w]+)/);
+                            const targetWords = correspondingTargetLine.split(/([^\w]+)/);
+                            const targetWordSet = new Set(targetWords);
+
+                            let wordOffset = lineStart;
+                            for (const word of initialWords) {
+                                if (word !== '' && !targetWordSet.has(word)) {
+                                    // This token is being deleted or changed
+                                    const className = highlightType === 'change' ? 'cm-change-match' : 'cm-delete-match';
+                                    initialDecorations.push(
+                                        Decoration.mark({ class: className }).range(wordOffset, wordOffset + word.length)
+                                    );
+                                }
+                                wordOffset += word.length;
                             }
-                            wordOffset += word.length;
                         }
                     }
+
+                    // Move to next line (+1 for newline character, except for last line)
+                    charOffset = lineEnd + (i < initialLines.length - 1 ? 1 : 0);
                 }
-
-                // Move to next line (+1 for newline character, except for last line)
-                charOffset = lineEnd + (i < initialLines.length - 1 ? 1 : 0);
             }
-        }
-
-        if (highlightWord && (highlightType === 'delete' || highlightType === 'change' || highlightType === 'target')) {
-            const regex = new RegExp(highlightWord, 'g');
-            let match;
-            const text = initialContent;
-
-            while ((match = regex.exec(text)) !== null) {
-                // If specific column is provided (preferred)
+            if (highlightWord && (highlightType === 'delete' || highlightType === 'change' || highlightType === 'target')) {
+                // If we have targetLine and highlightColumn, directly calculate the range
                 if (targetLine && typeof highlightColumn === 'number') {
                     const lineInfo = doc.line(targetLine);
-                    const relativeIndex = match.index - lineInfo.from;
-                    if (match.index >= lineInfo.from && match.index < lineInfo.to && relativeIndex === highlightColumn) {
+                    const startPos = lineInfo.from + highlightColumn;
+                    const endPos = startPos + highlightWord.length;
+
+                    // Validate range is within line bounds
+                    if (startPos >= lineInfo.from && endPos <= lineInfo.to) {
                         const className = highlightType === 'delete' ? 'cm-delete-match'
                             : highlightType === 'change' ? 'cm-change-match'
                                 : 'cm-target-match';
 
                         initialDecorations.push(
-                            Decoration.mark({ class: className }).range(match.index, match.index + match[0].length)
+                            Decoration.mark({ class: className }).range(startPos, endPos)
                         );
                     }
-                }
-                // Fallback: if only targetLine is provided
-                else if (targetLine) {
-                    const lineInfo = doc.line(targetLine);
-                    // Check if line is deleted
-                    let isDeleted = false;
-                    if (targetContent) {
-                        const initialLines = initialContent.split('\n');
-                        const targetLines = targetContent.split('\n');
-                        const isLineDeletion = targetLines.length < initialLines.length;
-                        if (isLineDeletion && !targetLines.includes(lineInfo.text)) {
-                            isDeleted = true;
-                        }
-                    }
+                } else {
+                    // Fallback: Use regex search for legacy cases
+                    const escapedWord = highlightWord.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                    const regex = new RegExp(escapedWord, 'g');
+                    let match;
+                    const text = initialContent;
 
-                    if (!isDeleted) {
-                        if (match.index >= lineInfo.from && match.index < lineInfo.to) {
+                    while ((match = regex.exec(text)) !== null) {
+                        if (targetLine) {
+                            const lineInfo = doc.line(targetLine);
+                            if (match.index >= lineInfo.from && match.index < lineInfo.to) {
+                                const className = highlightType === 'delete' ? 'cm-delete-match'
+                                    : highlightType === 'change' ? 'cm-change-match'
+                                        : 'cm-target-match';
+
+                                initialDecorations.push(
+                                    Decoration.mark({ class: className }).range(match.index, match.index + match[0].length)
+                                );
+                            }
+                        } else {
+                            // Global highlight
                             const className = highlightType === 'delete' ? 'cm-delete-match'
                                 : highlightType === 'change' ? 'cm-change-match'
                                     : 'cm-target-match';
@@ -395,16 +404,6 @@ function VimEditor({
                             );
                         }
                     }
-                }
-                // Fallback: global highlight (legacy)
-                else {
-                    const className = highlightType === 'delete' ? 'cm-delete-match'
-                        : highlightType === 'change' ? 'cm-change-match'
-                            : 'cm-target-match';
-
-                    initialDecorations.push(
-                        Decoration.mark({ class: className }).range(match.index, match.index + match[0].length)
-                    );
                 }
             }
         }
