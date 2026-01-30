@@ -37,8 +37,8 @@
     font-size: 12px;
     font-family: sans-serif;
     white-space: nowrap;
-    top: -30px;
-    /* Position above the pointer */
+    top: 5px;
+    /* Position aligned with the pointer */
     left: 50%;
     transform: translateX(-50%);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
