@@ -222,11 +222,18 @@ const challenges = [
                         const wordToDelete = targetObj.word;
                         const prefix = lineContent.substring(0, targetObj.index);
                         const suffix = lineContent.substring(targetObj.index + wordToDelete.length);
-                        let newLine = prefix + suffix;
+                        let newLine;
+
+                        // Match Vim's dw behavior:
+                        // - If followed by space, dw deletes word + space
+                        // - If followed by punctuation/delimiter, dw only deletes the word
+                        // - We do NOT remove preceding space in either case (that would be bdw behavior)
                         if (suffix.startsWith(' ')) {
+                            // Remove the word and the trailing space
                             newLine = prefix + suffix.substring(1);
-                        } else if (prefix.endsWith(' ')) {
-                            newLine = prefix.substring(0, prefix.length - 1) + suffix;
+                        } else {
+                            // Just remove the word (punctuation follows)
+                            newLine = prefix + suffix;
                         }
 
                         const nextLines = [...lines];
