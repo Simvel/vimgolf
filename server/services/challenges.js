@@ -298,6 +298,7 @@ const challenges = [
 
                     step.instructions = `Change "${targetWord}" to "${newWord}" on line ${targetLineIdx + 1}.`;
                     step.highlightWord = targetWord;
+                    step.highlightColumn = lineContent.indexOf(targetWord);
                     step.initialContent = currentContent;
                     step.targetContent = nextLines.join('\n');
                     step.overlays = [{
@@ -705,8 +706,7 @@ const challenges = [
                         step.targetLine = lineIdx + 1;
                         step.highlightColumn = colIdx;
 
-                        const escapedText = textToDelete.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                        step.highlightWord = escapedText;
+                        step.highlightWord = textToDelete;
 
                         const unit = type === 'W' ? 'WORD' : 'word';
                         step.instructions = `Delete ${count === 1 ? 'one ' + unit : count + ' ' + unit + 's'} ("${textToDelete.trim()}") at Line ${lineIdx + 1} (${op}).`;
