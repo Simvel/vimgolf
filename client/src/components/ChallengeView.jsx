@@ -241,7 +241,7 @@ function ChallengeView() {
                 {intermission && (
                     <div className="intermission-overlay">
                         <div className="intermission-content">
-                            <h2>✅ Stage {stepIndex + 1} Complete!</h2>
+                            <h2>Stage {stepIndex + 1} Complete</h2>
                         </div>
                     </div>
                 )}
@@ -306,7 +306,7 @@ function ChallengeView() {
                                         🏆 View Leaderboard
                                     </Link>
                                     <Link to="/" className="next-challenge-btn">
-                                        ➡️ Next Challenge
+                                        ➡️ New Challenge
                                     </Link>
                                 </div>
                             </>

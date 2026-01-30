@@ -75,7 +75,7 @@ function ChallengeList() {
 
                 <div className="header-actions">
                     <Link to="/leaderboard" className="link-btn leaderboard-btn">
-                        🏆 View Leaderboard
+                        LEADERBOARD
                     </Link>
                 </div>
             </div>
@@ -115,7 +115,6 @@ function ChallengeCard({ challenge }) {
                 </span>
             </div>
             <h3 className="challenge-name">{challenge.name}</h3>
-            <p className="challenge-description">{challenge.description}</p>
             <div className="card-footer">
                 <span className="play-hint">Click to play →</span>
             </div>

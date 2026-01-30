@@ -642,17 +642,7 @@ function VimEditor({
                 ))}
             </div>
 
-            {highlightWord && (
-                <div className="target-hint">
-                    <span className="hint-label">Target:</span> Find "{highlightWord}"
-                </div>
-            )}
 
-            {targetLine && (
-                <div className="target-hint">
-                    <span className="hint-label">Target:</span> Line {targetLine}
-                </div>
-            )}
 
             <div className="vim-editor-footer">
                 <div className="vim-help">
