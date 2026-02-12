@@ -117,6 +117,17 @@ function Leaderboard() {
                         <tbody>
                             {scores.map((score, index) => {
                                 const challenge = challenges.find(c => c.id === score.challenge_id);
+
+                                function getPlayerNameColor(s) {
+                                    if (s === undefined || s === null) return 'inherit';
+                                    const isAll = selectedChallenge === 'all';
+                                    const threshold = isAll ? -60 : -10;
+
+                                    if (s < threshold) return 'var(--hard)';
+                                    if (s <= 0) return 'var(--accent-green)';
+                                    return 'white';
+                                }
+
                                 return (
                                     <tr key={score.id || index} className={index < 3 ? `top-${index + 1}` : ''}>
                                         <td className="rank-col">
@@ -125,7 +136,12 @@ function Leaderboard() {
                                             {index === 2 && '🥉'}
                                             {index > 2 && `#${index + 1}`}
                                         </td>
-                                        <td className="player-col">{score.player_name}</td>
+                                        <td
+                                            className="player-col"
+                                            style={{ color: getPlayerNameColor(score.score) }}
+                                        >
+                                            {score.player_name}
+                                        </td>
                                         <td className="score-col">{score.score?.toLocaleString()}</td>
                                         {selectedChallenge === 'all' && (
                                             <td className="completed-col" style={{ textAlign: 'center' }}>
