@@ -107,7 +107,7 @@ function Leaderboard() {
                                 <th className="rank-col">Rank</th>
                                 <th className="player-col">Player</th>
                                 <th className="score-col">Score</th>
-                                {selectedChallenge === 'all' && <th className="completed-col">Completed</th>}
+
                                 {selectedChallenge !== 'all' && <th className="challenge-col">Challenge</th>}
                                 <th className="time-col">Time</th>
                                 <th className="keystrokes-col">Keystrokes</th>
@@ -143,11 +143,7 @@ function Leaderboard() {
                                             {score.player_name}
                                         </td>
                                         <td className="score-col">{score.score?.toLocaleString()}</td>
-                                        {selectedChallenge === 'all' && (
-                                            <td className="completed-col" style={{ textAlign: 'center' }}>
-                                                {score.challenges_completed}
-                                            </td>
-                                        )}
+
                                         {selectedChallenge !== 'all' && (
                                             <td className="challenge-col">
                                                 <Link to={`/challenge/${score.challenge_id}`}>
