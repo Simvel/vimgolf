@@ -54,7 +54,7 @@ Nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor.`;
 const NAV_MIX_CODE = `function calculateMetric(data) {
     let result = 0;
     const factor = 1.5;
-    
+
     // Process input data
     if (!data || data.length === 0) {
         return 0;
@@ -605,6 +605,7 @@ const challenges = [
         difficulty: "easy",
         description: "Navigate using h, j, k, l, w, b, W, B. Follow the optimal path.",
         generate: (seed) => {
+            console.log('--- Generating Challenge 4 --- Seed:', seed);
             const steps = [];
             const LINES = NAV_MIX_CODE.split('\n');
             const numSteps = 15;
@@ -625,6 +626,7 @@ const challenges = [
             };
 
             const singleMove = (pos, type, lines) => {
+                console.log('singleMove', type, pos.line, pos.col); // Reduced verbosity
                 let { line, col } = pos;
                 const lineStr = lines[line];
                 const MAX_LINE = lines.length - 1;
@@ -684,7 +686,7 @@ const challenges = [
                             if (currType !== 0) {
                                 let loopSafety = 0;
                                 while (true) {
-                                    if (loopSafety++ > 1000) break;
+                                    if (loopSafety++ > 1000) { console.error('Break loop A'); break; }
                                     const next = advance(p.l, p.c);
                                     if (next.eof || next.wrapped) { p = next; break; }
                                     p = next;
@@ -693,7 +695,7 @@ const challenges = [
                             }
                             let loopSafety = 0;
                             while (true) {
-                                if (loopSafety++ > 1000) break;
+                                if (loopSafety++ > 1000) { console.error('Break loop B'); break; }
                                 if (p.l === MAX_LINE && p.c === getLineLength(lines, p.l) - 1) break;
                                 if (getType(p.l, p.c) !== 0) break;
                                 const next = advance(p.l, p.c);
@@ -711,7 +713,7 @@ const challenges = [
                             if (!isSpace(p.l, p.c)) {
                                 let loopSafety = 0;
                                 while (true) {
-                                    if (loopSafety++ > 1000) break;
+                                    if (loopSafety++ > 1000) { console.error('Break loop C'); break; }
                                     const next = advance(p.l, p.c);
                                     if (next.eof || next.wrapped) { p = next; break; }
                                     p = next;
@@ -720,7 +722,7 @@ const challenges = [
                             }
                             let loopSafety = 0;
                             while (true) {
-                                if (loopSafety++ > 1000) break;
+                                if (loopSafety++ > 1000) { console.error('Break loop D'); break; }
                                 if (p.l === MAX_LINE && p.c === getLineLength(lines, p.l) - 1) break;
                                 if (!isSpace(p.l, p.c)) break;
                                 const next = advance(p.l, p.c);
@@ -739,7 +741,7 @@ const challenges = [
                             // 1. Skip spaces backwards
                             let loopSafety = 0;
                             while (true) {
-                                if (loopSafety++ > 1000) break;
+                                if (loopSafety++ > 1000) { console.error('Break loop E'); break; }
                                 if (getType(p.l, p.c) !== 0 && getType(p.l, p.c) !== 3) break; // Found non-space
                                 const prev = retreat(p.l, p.c);
                                 if (prev.bof) { p = prev; break; }
@@ -751,7 +753,7 @@ const challenges = [
                             if (targetType !== 0 && targetType !== 3) {
                                 loopSafety = 0;
                                 while (true) {
-                                    if (loopSafety++ > 1000) break;
+                                    if (loopSafety++ > 1000) { console.error('Break loop F'); break; }
                                     const prev = retreat(p.l, p.c);
                                     if (prev.bof || prev.wrapped || getType(prev.l, prev.c) !== targetType) break;
                                     p = prev;
@@ -769,7 +771,7 @@ const challenges = [
                             // 1. Skip spaces backwards
                             let loopSafety = 0;
                             while (true) {
-                                if (loopSafety++ > 1000) break;
+                                if (loopSafety++ > 1000) { console.error('Break loop G'); break; }
                                 if (!isSpace(p.l, p.c) && getLineLength(lines, p.l) > 0) break;
                                 const prev = retreat(p.l, p.c);
                                 if (prev.bof) { p = prev; break; }
@@ -780,7 +782,7 @@ const challenges = [
                             if (getLineLength(lines, p.l) > 0 && !isSpace(p.l, p.c)) {
                                 loopSafety = 0;
                                 while (true) {
-                                    if (loopSafety++ > 1000) break;
+                                    if (loopSafety++ > 1000) { console.error('Break loop H'); break; }
                                     const prev = retreat(p.l, p.c);
                                     if (prev.bof || prev.wrapped || isSpace(prev.l, prev.c)) break;
                                     p = prev;
@@ -806,6 +808,7 @@ const challenges = [
             const typesHistory = { chars: 0, words: 0, bigwords: 0, lines: 0 };
 
             for (let i = 0; i < numSteps; i++) {
+                console.log('Gen Step', i);
                 const stepSeed = seed + i * 111;
 
                 let typeWeights = { 'h': 1, 'l': 1, 'w': 1, 'b': 1, 'W': 1, 'B': 1, 'j': 1, 'k': 1 };
@@ -829,6 +832,7 @@ const challenges = [
 
                 // Retry until we find a move that actually changes position
                 do {
+                    console.log('Attempt', attempts);
                     attempts++;
                     const types = Object.keys(typeWeights);
                     const typePool = [];
@@ -836,6 +840,8 @@ const challenges = [
                         const w = Math.ceil(typeWeights[t] * 10);
                         for (let k = 0; k < w; k++) typePool.push(t);
                     }
+                    if (typePool.length === 0) console.error('CRITICAL: TypePool empty!');
+
                     type = typePool[randomInRange(stepSeed + attempts, 0, typePool.length - 1)];
 
                     const counts = Object.keys(countWeights);
@@ -844,9 +850,14 @@ const challenges = [
                         const w = Math.ceil(countWeights[c] * 100);
                         for (let k = 0; k < w; k++) countPool.push(parseInt(c));
                     }
+                    if (countPool.length === 0) console.error('CRITICAL: CountPool empty!');
+
                     count = countPool[randomInRange(stepSeed + attempts + 1, 0, countPool.length - 1)];
 
+                    console.log(`Trying move: ${count}${type}`);
+
                     nextPos = move(currentPos, type, count, LINES);
+                    console.log('Result pos:', nextPos);
                 } while (
                     (nextPos.line === currentPos.line && nextPos.col === currentPos.col) &&
                     attempts < 20
@@ -866,7 +877,7 @@ const challenges = [
                 const step = {
                     initialContent: NAV_MIX_CODE,
                     targetContent: NAV_MIX_CODE,
-                    instructions: `Move to character '${displayChar}' at Line ${nextPos.line + 1}, Column ${nextPos.col + 1} (Hint: try ${count}${type})`,
+                    instructions: `Move to character '${displayChar}' at Line ${nextPos.line + 1}, Column ${nextPos.col + 1}`,
                     checkType: 'cursor_position',
                     targetValue: { line: nextPos.line + 1, col: nextPos.col + 1 },
                     initialCursor: { line: currentPos.line + 1, col: currentPos.col + 1 },
@@ -882,7 +893,7 @@ const challenges = [
             return { steps };
         },
         timePar: 30000,
-        keyPressesPar: 28
+        keyPressesPar: 26
     },
     {
         id: 5,

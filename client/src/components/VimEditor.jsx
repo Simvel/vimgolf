@@ -256,15 +256,38 @@ function VimEditor({
                 // Let's assume passed prop highlightColumn is 0-indexed as per normal usage in this app so far (passed from step.highlightColumn).
                 if (typeof highlightColumn === 'number') {
                     // Highlight the specific range
-                    const from = lineInfo.from + highlightColumn;
-                    // If highlightWord is provided, use its length; otherwise highlight single char
-                    const highlightLen = highlightWord ? highlightWord.length : 1;
-                    const to = from + highlightLen;
-
-                    if (to <= lineInfo.to + 1) {
+                    if (lineInfo.length === 0) {
+                        // Empty line: use line highlight to avoid empty mark range crash
                         initialDecorations.push(
-                            Decoration.mark({ class: 'cm-target-match' }).range(from, Math.min(to, lineInfo.to))
+                            Decoration.line({ class: 'cm-target-line' }).range(lineInfo.from)
                         );
+                    } else {
+                        const from = lineInfo.from + highlightColumn;
+                        // If highlightWord is provided, use its length; otherwise highlight single char
+                        const highlightLen = highlightWord ? highlightWord.length : 1;
+                        const to = from + highlightLen;
+
+                        if (to <= lineInfo.to + 1) {
+                            // Ensure we don't create an empty range manually either (e.g. if to == from)
+                            // But highlightLen >= 1 so to > from always. 
+                            // Only edge case is if from >= lineInfo.to (end of line)
+
+                            const safeFrom = Math.min(from, lineInfo.to - (lineInfo.length > 0 ? 0 : 0)); // Clamp
+                            // Actually, if from == lineInfo.to and not empty, we are targeting the newline?
+                            // CodeMirror mark cannot target the newline character itself easily with range(to, to+1) if inclusive?
+
+                            if (safeFrom < lineInfo.to) {
+                                initialDecorations.push(
+                                    Decoration.mark({ class: 'cm-target-match' }).range(safeFrom, Math.min(to, lineInfo.to))
+                                );
+                            } else {
+                                // Fallback for EOL char targeting if we can't mark it: highlight line
+                                // Or we could append a widget, but line highlight is safer fall back
+                                initialDecorations.push(
+                                    Decoration.line({ class: 'cm-target-line' }).range(lineInfo.from)
+                                );
+                            }
+                        }
                     }
                 } else {
                     // Fallback: Highlight entire line
