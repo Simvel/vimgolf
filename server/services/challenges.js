@@ -6,9 +6,7 @@ const EXPANDED_CODE_SAMPLE = `function calculateTotal(items) {
   let total = 0;
   for (let i = 0; i < items.length; i++) {
     const item = items[i];
-    const price = item.price;
-    const quantity = item.quantity;
-    total += price * quantity;
+    total += item.price * item.quantity;
   }
   return total;
 }
@@ -19,20 +17,17 @@ function formatCurrency(amount) {
 
 function displayCart(items) {
   console.log("Shopping Cart:");
-  console.log("==============");
   for (const item of items) {
     console.log(item.name + ": " + formatCurrency(item.price));
   }
   const total = calculateTotal(items);
-  console.log("Total: " + formatCurrency(total));
 }
 
 const shoppingCart = [
   { name: "Apple", price: 1.50, quantity: 3, id: "p1" },
   { name: "Banana", price: 0.75, quantity: 6, id: "p2" },
   { name: "Orange", price: 2.00, quantity: 2, id: "p3" },
-  { name: "Mango", price: 3.50, quantity: 1, id: "p4" },
-  { name: "Grape", price: 5.00, quantity: 2, id: "p5" },
+  { name: "Mango", price: 3.50, quantity: 1, id: "p4" }
 ];
 
 function applyDiscount(total, code) {
@@ -115,7 +110,7 @@ const challenges = [
     {
         id: 1,
         name: "Navigation",
-        difficulty: "medium",
+        difficulty: "easy",
         description: "A chain of 5 navigation tasks. Move efficiently to the targets.",
         generate: (seed) => {
             const steps = [];
@@ -898,14 +893,14 @@ const challenges = [
     {
         id: 5,
         name: "Deletion B",
-        difficulty: "hard",
+        difficulty: "easy",
         description: "Delete using precise Vim commands: dd, dw, dW, 2dd, etc.",
         generate: (seed) => {
             const steps = [];
             let currentContent = EXPANDED_CODE_SAMPLE;
             // Track cursor position to persist across steps
             let currentCursor = { line: 1, col: 1 };
-            const numSteps = 5;
+            const numSteps = 10;
 
             for (let i = 0; i < numSteps; i++) {
                 const stepSeed = seed + i * 222;
@@ -1033,8 +1028,8 @@ const challenges = [
             }
             return { steps };
         },
-        timePar: 50000,
-        keyPressesPar: 40
+        timePar: 40000,
+        keyPressesPar: 60
     },
     {
         id: 6,
