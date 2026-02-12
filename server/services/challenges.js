@@ -1211,7 +1211,7 @@ const challenges = [
 
             return { steps };
         },
-        timePar: 50000,
+        timePar: 30000,
         keyPressesPar: 40
     }
 ];
