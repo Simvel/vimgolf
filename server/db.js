@@ -35,6 +35,7 @@ db.exec(`
 
   CREATE INDEX IF NOT EXISTS idx_scores_challenge ON scores(challenge_id);
   CREATE INDEX IF NOT EXISTS idx_scores_time ON scores(time_ms);
+  CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions(expires_at);
 `);
 
 // Migration: Add start_time to sessions if checks missing
@@ -46,5 +47,26 @@ try {
     // console.log('Note: start_time column might already exist or partial migration', e.message);
   }
 }
+
+// Cleanup task: Remove expired sessions
+const cleanupExpiredSessions = () => {
+  try {
+    const now = new Date().toISOString();
+    // Only delete sessions that have expired. 
+    // Note: If scores reference these sessions, this might violate FK constraints if enabled,
+    // but better-sqlite3 defaults to FKs disabled unless PRAGMA foreign_keys = ON is set.
+    // Also, we generally want to remove old session data to keep the DB size manageable.
+    const result = db.prepare('DELETE FROM sessions WHERE expires_at < ?').run(now);
+    if (result.changes > 0) {
+      console.log(`🧹 Cleaned up ${result.changes} expired sessions`);
+    }
+  } catch (error) {
+    console.error('Error cleaning up sessions:', error);
+  }
+};
+
+// Run cleanup on startup and then periodically every 10 minutes
+cleanupExpiredSessions();
+setInterval(cleanupExpiredSessions, 10 * 60 * 1000);
 
 export default db;

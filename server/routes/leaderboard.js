@@ -420,14 +420,13 @@ router.post('/reset', (req, res) => {
                         expiresAt
                     );
 
-                    // Insert dummy score for Simvel
                     db.prepare(`
                     INSERT INTO scores (session_id, challenge_id, player_name, time_ms, keystrokes, keystroke_data)
                     VALUES (?, ?, ?, ?, ?, ?)
                 `).run(
                         sessionId,
                         challenge.id,
-                        'Simvel',
+                        'TestPlayer',
                         100000,
                         100,
                         '[]'
@@ -443,7 +442,7 @@ router.post('/reset', (req, res) => {
         resetTx();
 
 
-        res.json({ success: true, message: 'Leaderboard reset and seeded with Simvel scores' });
+        res.json({ success: true, message: 'Leaderboard reset and seeded with TestPlayer scores' });
 
     } catch (error) {
         console.error('Error resetting leaderboard:', error);
