@@ -1120,9 +1120,122 @@ body {
   font-size: 0.9rem;
   font-family: 'Fira Code', monospace;
 }
+
 .stat-par {
   font-size: 1rem;
   color: var(--text-muted);
   margin-left: var(--spacing-xs);
   font-weight: 400;
+}
+
+/* ===== HELP MODAL ===== */
+.instructions-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-xs);
+}
+
+.help-btn {
+  padding: 2px 8px;
+  background: rgba(0, 255, 136, 0.1);
+  border: 1px solid var(--accent-green);
+  border-radius: var(--radius-sm);
+  color: var(--accent-green);
+  font-size: 0.7rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.help-btn:hover {
+  background: var(--accent-green);
+  color: var(--bg-primary);
+  transform: translateY(-1px);
+}
+
+.help-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 10, 15, 0.8);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-lg);
+}
+
+.help-modal-content {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-xl);
+  max-width: 600px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+}
+
+.help-modal-content h2 {
+  color: var(--accent-green);
+  margin-bottom: var(--spacing-lg);
+  text-align: center;
+  font-size: 1.5rem;
+}
+
+.help-body {
+  margin-bottom: var(--spacing-lg);
+}
+
+.help-body section {
+  margin-bottom: var(--spacing-lg);
+}
+
+.help-body h3 {
+  color: var(--accent-cyan);
+  margin-bottom: var(--spacing-sm);
+  font-size: 1.1rem;
+}
+
+.help-body ul {
+  list-style: none;
+  padding-left: 0;
+}
+
+.help-body li {
+  margin-bottom: var(--spacing-xs);
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.help-body code {
+  background: rgba(255, 255, 255, 0.1);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: 'Fira Code', monospace;
+  color: var(--text-primary);
+  font-size: 0.9em;
+}
+
+.close-help-btn {
+  display: block;
+  width: 100%;
+  padding: var(--spacing-md);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-weight: 600;
+  transition: all var(--transition-fast);
+}
+
+.close-help-btn:hover {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border-color: var(--accent-green);
 }

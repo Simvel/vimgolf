@@ -112,6 +112,12 @@ const challenges = [
         name: "Navigation A",
         difficulty: "easy",
         description: "A chain of 5 navigation tasks. Move efficiently to the targets.",
+        help: [
+            {
+                title: "Navigation Basics",
+                content: "<ul><li><code>h</code>, <code>j</code>, <code>k</code>, <code>l</code>: Move Left, Down, Up, Right</li><li><code>w</code>: Jump forward to start of word</li><li><code>b</code>: Jump backward to start of word</li><li><code>0</code>: Jump to start of line</li><li><code>$</code>: Jump to end of line</li><li><code>gg</code>: Go to first line</li><li><code>G</code>: Go to last line</li><li><code>%</code>: Move to matching bracket</li></ul>"
+            }
+        ],
         generate: (seed) => {
             const steps = [];
             const content = generateNavigationContent(seed);
@@ -211,6 +217,12 @@ const challenges = [
         name: "Deletion A",
         difficulty: "easy",
         description: "Sequentially delete unwanted code from the file.",
+        help: [
+            {
+                title: "Deletion Commands",
+                content: "<ul><li><code>x</code>: Delete character under cursor</li><li><code>dd</code>: Delete (cut) current line</li><li><code>dw</code>: Delete (cut) from cursor to next word start</li><li><code>u</code>: Undo change</li></ul>"
+            }
+        ],
         generate: (seed) => {
             const steps = [];
             let currentContent = EXPANDED_CODE_SAMPLE;
@@ -383,6 +395,12 @@ const challenges = [
         name: "Refactor",
         difficulty: "easy",
         description: "A series of replacement and formatting tasks.",
+        help: [
+            {
+                title: "Changing Text",
+                content: "<ul><li><code>r</code>: Replace single character</li><li><code>cw</code>: Change word (delete word and enter insert mode)</li><li><code>cc</code>: Change entire line</li><li><code>C</code>: Change from cursor to end of line</li><li><code>A</code>: Append text at end of line</li><li><code>I</code>: Insert text at start of line</li></ul>"
+            }
+        ],
         generate: (seed) => {
             const steps = [];
             let currentContent = EXPANDED_CODE_SAMPLE;
@@ -599,6 +617,12 @@ const challenges = [
         name: "Navigation B",
         difficulty: "easy",
         description: "Navigate using h, j, k, l, w, b, W, B. Follow the optimal path.",
+        help: [
+            {
+                title: "Advanced Navigation",
+                content: "<ul><li><code>W</code>: Jump forward by WORD (space-separated)</li><li><code>B</code>: Jump backward by WORD</li><li><code>f{char}</code>: Find occurrence of {char} to the right</li><li><code>t{char}</code>: Move 'till' occurrence of {char} to the right</li><li><code>;</code>: Repeat latest f, t, F or T</li><li><code>}</code>: Jump forward by paragraph</li></ul>"
+            }
+        ],
         generate: (seed) => {
             console.log('--- Generating Challenge 4 --- Seed:', seed);
             const steps = [];
@@ -895,6 +919,12 @@ const challenges = [
         name: "Deletion B",
         difficulty: "medium",
         description: "Delete using precise Vim commands: dd, dw, dW, 2dd, etc.",
+        help: [
+            {
+                title: "Advanced Deletion",
+                content: "<ul><li><code>dW</code>: Delete to next SPACE-separated WORD</li><li><code>d$</code>: Delete to end of line</li><li><code>d0</code>: Delete to start of line</li><li><code>2dd</code>: Delete 2 lines</li><li><code>3dw</code>: Delete 3 words</li></ul>"
+            }
+        ],
         generate: (seed) => {
             const steps = [];
             let currentContent = EXPANDED_CODE_SAMPLE;
@@ -1033,9 +1063,15 @@ const challenges = [
     },
     {
         id: 6,
-        name: "Yank & Paste",
+        name: "Yank & Paste A",
         difficulty: "medium",
         description: "Yank (copy) text and paste it in specific locations.",
+        help: [
+            {
+                title: "Copy and Paste",
+                content: "<ul><li><code>yy</code>: Yank (copy) current line</li><li><code>yw</code>: Yank word</li><li><code>p</code>: Paste after cursor</li><li><code>P</code>: Paste before cursor</li><li><code>y$</code>: Yank to end of line</li></ul>"
+            }
+        ],
         generate: (seed) => {
             const steps = [];
             let currentContent = LOREM_IPSUM;
@@ -1219,6 +1255,16 @@ const challenges = [
         name: "Yank & Paste B",
         difficulty: "hard",
         description: "Use registers to copy UUIDs and replace placeholders.",
+        help: [
+            {
+                title: "Registers",
+                content: "<ul><li><code>\"ay</code>: Yank into register 'a'</li><li><code>\"ap</code>: Paste from register 'a'</li><li><code>\"byy</code>: Yank line into register 'b'</li></ul>"
+            },
+            {
+                title: "Visual Mode",
+                content: "<ul><li><code>v</code>: Start visual mode</li><li><code>V</code>: Start visual line mode</li></ul>"
+            }
+        ],
         generate: (seed) => {
             const steps = [];
 
@@ -1521,7 +1567,9 @@ export function generateChallenge(challengeId, seed) {
         difficulty: challenge.difficulty,
         description: challenge.description,
         timePar: challenge.timePar,
+        timePar: challenge.timePar,
         keyPressesPar: challenge.keyPressesPar,
+        help: challenge.help,
         ...generated // Contains { steps: [...] }
     };
 }

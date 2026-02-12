@@ -21,6 +21,7 @@ function ChallengeView() {
         localStorage.getItem('vimgolf_player_name') || ''
     );
     const [showNameInput, setShowNameInput] = useState(false);
+    const [showHelp, setShowHelp] = useState(false);
 
     // We accumulate keystrokes across steps for final submission if needed, 
     // or just trust the server's time tracking.
@@ -235,9 +236,70 @@ function ChallengeView() {
             </div>
 
             <div className="instructions-panel">
-                <h3>📋 Instructions</h3>
+                <div className="instructions-header">
+                    <h3>📋 Instructions</h3>
+                    <button className="help-btn" onClick={() => setShowHelp(true)}>HELP</button>
+                </div>
                 <p>{challenge?.instructions}</p>
             </div>
+
+            {
+                showHelp && (
+                    <div className="help-modal-backdrop" onClick={(e) => {
+                        if (e.target === e.currentTarget) setShowHelp(false);
+                    }}>
+                        <div className="help-modal-content">
+                            <h2>Vim Survival Guide</h2>
+                            <div className="help-body">
+                                {challenge?.help ? (
+                                    challenge.help.map((section, idx) => (
+                                        <section key={idx}>
+                                            <h3>{section.title}</h3>
+                                            <div dangerouslySetInnerHTML={{ __html: section.content }} />
+                                        </section>
+                                    ))
+                                ) : (
+                                    <>
+                                        <section>
+                                            <h3>Navigation</h3>
+                                            <ul>
+                                                <li><code>h</code> <code>j</code> <code>k</code> <code>l</code> - Left, Down, Up, Right</li>
+                                                <li><code>w</code> - Jump forward to start of word</li>
+                                                <li><code>b</code> - Jump backward to start of word</li>
+                                                <li><code>0</code> - Jump to start of line</li>
+                                                <li><code>$</code> - Jump to end of line</li>
+                                                <li><code>gg</code> - Jump to first line</li>
+                                                <li><code>G</code> - Jump to last line</li>
+                                            </ul>
+                                        </section>
+                                        <section>
+                                            <h3>Editing</h3>
+                                            <ul>
+                                                <li><code>i</code> - Insert mode (type text)</li>
+                                                <li><code>x</code> - Delete character under cursor</li>
+                                                <li><code>dd</code> - Delete (cut) current line</li>
+                                                <li><code>dw</code> - Delete (cut) current word</li>
+                                                <li><code>u</code> - Undo</li>
+                                                <li><code>Esc</code> - Exit Insert mode</li>
+                                            </ul>
+                                        </section>
+                                        <section>
+                                            <h3>Visual Mode</h3>
+                                            <ul>
+                                                <li><code>v</code> - Enter visual mode</li>
+                                                <li><code>Shift + v</code> - Visual line mode</li>
+                                                <li><code>y</code> - Yank (copy) selection</li>
+                                                <li><code>p</code> - Paste after cursor</li>
+                                            </ul>
+                                        </section>
+                                    </>
+                                )}
+                            </div>
+                            <button className="close-help-btn" onClick={() => setShowHelp(false)}>Close Guide</button>
+                        </div>
+                    </div>
+                )
+            }
 
             <div className="editor-container">
                 {intermission && (
@@ -352,19 +414,21 @@ function ChallengeView() {
                 )}
             </div>
 
-            {submitting && (
-                <div className="submitting-overlay">
-                    <div className="loading-spinner"></div>
-                    <p>Validating submission...</p>
-                </div>
-            )}
+            {
+                submitting && (
+                    <div className="submitting-overlay">
+                        <div className="loading-spinner"></div>
+                        <p>Validating submission...</p>
+                    </div>
+                )
+            }
 
             <div className="stats-bar">
                 <span className="stat-item">
                     ⌨️ Keystrokes (Step): <strong>{keystrokeCount}</strong>
                 </span>
             </div>
-        </div>
+        </div >
     );
 }
 

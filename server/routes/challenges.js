@@ -72,6 +72,7 @@ router.post('/:id/start', (req, res) => {
                 description: challenge.description,
                 timePar: challenge.timePar,
                 keyPressesPar: challenge.keyPressesPar,
+                help: challenge.help,
                 ...firstStep
             }
         });
