@@ -114,8 +114,8 @@ function generateNavigationContent(seed) {
 const challenges = [
     {
         id: 1,
-        name: "Navigation A",
-        difficulty: "easy",
+        name: "Navigation",
+        difficulty: "medium",
         description: "A chain of 5 navigation tasks. Move efficiently to the targets.",
         generate: (seed) => {
             const steps = [];
@@ -214,48 +214,79 @@ const challenges = [
     {
         id: 2,
         name: "Deletion A",
-        difficulty: "medium",
+        difficulty: "easy",
         description: "Sequentially delete unwanted code from the file.",
         generate: (seed) => {
             const steps = [];
             let currentContent = EXPANDED_CODE_SAMPLE;
-            const numSteps = 5;
+            const numSteps = 6;
+
+            // Create a pool of tasks: 2 of each type (0-2)
+            const taskTypes = [0, 0, 1, 1, 2, 2];
+
+            // Shuffle taskTypes deterministically
+            for (let i = taskTypes.length - 1; i > 0; i--) {
+                const j = randomInRange(seed + i * 777, 0, i);
+                [taskTypes[i], taskTypes[j]] = [taskTypes[j], taskTypes[i]];
+            }
 
             for (let i = 0; i < numSteps; i++) {
                 const stepSeed = seed + i * 50;
+                const type = taskTypes[i];
                 const lines = currentContent.split('\n');
-                let targetLineIdx = -1;
-                let attempts = 0;
-                while (targetLineIdx === -1 && attempts < 100) {
-                    const idx = randomInRange(stepSeed + attempts, 1, lines.length - 2);
-                    if (lines[idx].trim().length > 5) {
-                        targetLineIdx = idx;
-                    }
-                    attempts++;
-                }
-                if (targetLineIdx === -1) targetLineIdx = 5;
 
-                const lineContent = lines[targetLineIdx];
-                const type = i % 2;
-                let nextContent = '';
-                const step = {
-                    startLine: targetLineIdx + 1,
+                let step = {
                     checkType: 'content_match',
                     highlightType: 'delete'
                 };
 
-                if (type === 0 || lineContent.length < 10) {
+                let nextContent = '';
+                let validStep = false;
+                let targetLineIdx = -1;
+
+                if (type === 0) {
+                    // Type 0: Delete Line
+                    let attempts = 0;
+                    while (targetLineIdx === -1 && attempts < 100) {
+                        // Avoid first/last lines if possible
+                        const idx = randomInRange(stepSeed + attempts, 1, lines.length - 2);
+                        if (lines[idx].trim().length > 5) {
+                            targetLineIdx = idx;
+                        }
+                        attempts++;
+                    }
+                    if (targetLineIdx === -1) targetLineIdx = 5;
+
+                    const lineContent = lines[targetLineIdx];
                     const nextLines = [...lines];
                     nextLines.splice(targetLineIdx, 1);
                     nextContent = nextLines.join('\n');
+
                     step.instructions = `Delete line ${targetLineIdx + 1}: "${lineContent.trim()}"`;
                     step.targetLine = targetLineIdx + 1;
-                } else {
+                    step.startLine = targetLineIdx + 1;
+                    validStep = true;
+
+                } else if (type === 1) {
+                    // Type 1: Delete Word
+                    // Find a line that has words
+                    let attempts = 0;
+                    while (targetLineIdx === -1 && attempts < 100) {
+                        const idx = randomInRange(stepSeed + attempts + 1000, 1, lines.length - 2);
+                        if (lines[idx].trim().length > 10) {
+                            // Must have at least one word > 2 chars
+                            if (/\b\w{3,}\b/.test(lines[idx])) targetLineIdx = idx;
+                        }
+                        attempts++;
+                    }
+                    if (targetLineIdx === -1) targetLineIdx = 7;
+
+                    const lineContent = lines[targetLineIdx];
                     const wordsMap = [];
                     let match;
                     const wordRegex = /\b\w+\b/g;
                     while ((match = wordRegex.exec(lineContent)) !== null) {
-                        if (match[0].length > 1) {
+                        if (match[0].length > 2) {
                             wordsMap.push({ word: match[0], index: match.index });
                         }
                     }
@@ -263,19 +294,15 @@ const challenges = [
                     if (wordsMap.length > 0) {
                         const targetObj = wordsMap[randomInRange(stepSeed, 0, wordsMap.length - 1)];
                         const wordToDelete = targetObj.word;
+
+                        // Vim dw logic simulation
                         const prefix = lineContent.substring(0, targetObj.index);
                         const suffix = lineContent.substring(targetObj.index + wordToDelete.length);
                         let newLine;
 
-                        // Match Vim's dw behavior:
-                        // - If followed by space, dw deletes word + space
-                        // - If followed by punctuation/delimiter, dw only deletes the word
-                        // - We do NOT remove preceding space in either case (that would be bdw behavior)
                         if (suffix.startsWith(' ')) {
-                            // Remove the word and the trailing space
                             newLine = prefix + suffix.substring(1);
                         } else {
-                            // Just remove the word (punctuation follows)
                             newLine = prefix + suffix;
                         }
 
@@ -287,12 +314,61 @@ const challenges = [
                         step.highlightWord = wordToDelete;
                         step.highlightColumn = targetObj.index;
                         step.targetLine = targetLineIdx + 1;
-                    } else {
-                        const nextLines = [...lines];
-                        nextLines.splice(targetLineIdx, 1);
+                        step.startLine = targetLineIdx + 1;
+                        validStep = true;
+                    }
+                } else if (type === 2) {
+                    // Type 2: Delete 's' from 'items'
+                    const candidates = [];
+                    for (let l = 0; l < lines.length; l++) {
+                        let match;
+                        const regex = /items/g;
+                        while ((match = regex.exec(lines[l])) !== null) {
+                            if (match[0] === 'items') {
+                                candidates.push({ line: l, index: match.index, word: match[0] });
+                            }
+                        }
+                    }
+
+                    if (candidates.length > 0) {
+                        const choice = candidates[randomInRange(stepSeed, 0, candidates.length - 1)];
+                        const lineContent = lines[choice.line];
+
+                        // The 's' is at choice.index + 4 ("items" is 5 chars, indices 0-4)
+                        const sIndex = choice.index + 4;
+                        const sChar = lineContent[sIndex];
+
+                        if (sChar === 's') {
+                            // Delete just the 's'
+                            const newLine = lineContent.substring(0, sIndex) + lineContent.substring(sIndex + 1);
+
+                            const nextLines = [...lines];
+                            nextLines[choice.line] = newLine;
+                            nextContent = nextLines.join('\n');
+
+                            step.instructions = `Go to "${choice.word}" on line ${choice.line + 1} and delete the "s" at the end.`;
+                            step.highlightWord = "s"; // Highlighting just the 's'
+                            step.highlightColumn = sIndex;
+                            step.targetLine = choice.line + 1;
+                            step.startLine = choice.line + 1;
+                            validStep = true;
+                        }
+                    }
+                }
+
+                // Fallback
+                if (!validStep) {
+                    const fallbackIdx = 6;
+                    const nextLines = [...lines];
+                    if (nextLines.length > fallbackIdx) {
+                        nextLines.splice(fallbackIdx, 1);
                         nextContent = nextLines.join('\n');
-                        step.instructions = `Delete line ${targetLineIdx + 1}: "${lineContent.trim()}"`;
-                        step.targetLine = targetLineIdx + 1;
+                        step.instructions = `Delete line ${fallbackIdx + 1}.`;
+                        step.targetLine = fallbackIdx + 1;
+                        step.startLine = fallbackIdx + 1;
+                    } else {
+                        // Extremely unlikely fallback
+                        nextContent = currentContent;
                     }
                 }
 
@@ -304,8 +380,8 @@ const challenges = [
 
             return { steps };
         },
-        timePar: 60000,
-        keyPressesPar: 30
+        timePar: 22000,
+        keyPressesPar: 33
     },
     {
         id: 3,

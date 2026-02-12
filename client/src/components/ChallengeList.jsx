@@ -70,7 +70,7 @@ function ChallengeList() {
     return (
         <div className="challenge-list">
             <div className="challenge-header">
-                <h1>Vim Speed Golf</h1>
+                <h1>Vim Speedgolf</h1>
                 <p className="subtitle">Kompetensdagen februari</p>
 
                 <div className="header-actions">
