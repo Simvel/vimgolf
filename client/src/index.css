@@ -1120,3 +1120,9 @@ body {
   font-size: 0.9rem;
   font-family: 'Fira Code', monospace;
 }
+.stat-par {
+  font-size: 1rem;
+  color: var(--text-muted);
+  margin-left: var(--spacing-xs);
+  font-weight: 400;
+}

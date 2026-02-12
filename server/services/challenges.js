@@ -166,7 +166,7 @@ const challenges = [
                     step.targetValue = targetLine;
                 } else if (type === 3) { // Last line
                     const targetLine = lines.length;
-                    step.instructions = "Move cursor to the last line (G).";
+                    step.instructions = "Move cursor to the last line.";
                     step.targetLine = targetLine;
                     step.checkType = 'cursor_line';
                     step.targetValue = targetLine;
@@ -186,7 +186,7 @@ const challenges = [
                     const openIdx = lineContent.indexOf(chosen.open);
                     const closeIdx = lineContent.indexOf(chosen.close, openIdx);
 
-                    step.instructions = `Move to the matching bracket of "${chosen.open}" on Line ${chosen.lineIdx + 1} (try %).`;
+                    step.instructions = `Move to the matching bracket of "${chosen.open}" on Line ${chosen.lineIdx + 1}.`;
 
                     // Force start at opening bracket
                     step.initialCursor = { line: chosen.lineIdx + 1, col: openIdx + 1 };
@@ -591,8 +591,8 @@ const challenges = [
 
             return { steps };
         },
-        timePar: 37000,
-        keyPressesPar: 70
+        timePar: 30000,
+        keyPressesPar: 65
     },
     {
         id: 4,

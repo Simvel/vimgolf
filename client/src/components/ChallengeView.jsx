@@ -123,6 +123,8 @@ function ChallengeView() {
                         name: prev.challenge.name,
                         difficulty: prev.challenge.difficulty,
                         description: prev.challenge.description,
+                        timePar: prev.challenge.timePar,
+                        keyPressesPar: prev.challenge.keyPressesPar,
                         // Replace all step-specific data with new step
                         ...result.step
                     }
@@ -286,11 +288,21 @@ function ChallengeView() {
                                         <span className="stat-label">Score</span>
                                     </div>
                                     <div className="stat">
-                                        <span className="stat-value">{formatTime(result.timeMs)}</span>
+                                        <span className="stat-value">
+                                            {formatTime(result.timeMs)}
+                                            {challenge?.timePar && (
+                                                <span className="stat-par"> / {formatTime(challenge.timePar)} </span>
+                                            )}
+                                        </span>
                                         <span className="stat-label">Time</span>
                                     </div>
                                     <div className="stat">
-                                        <span className="stat-value">{result.keystrokes}</span>
+                                        <span className="stat-value">
+                                            {result.keystrokes}
+                                            {challenge?.keyPressesPar && (
+                                                <span className="stat-par"> / {challenge.keyPressesPar} </span>
+                                            )}
+                                        </span>
                                         <span className="stat-label">Keystrokes</span>
                                     </div>
 

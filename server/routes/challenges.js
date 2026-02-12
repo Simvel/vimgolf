@@ -70,6 +70,8 @@ router.post('/:id/start', (req, res) => {
                 name: challenge.name,
                 difficulty: challenge.difficulty,
                 description: challenge.description,
+                timePar: challenge.timePar,
+                keyPressesPar: challenge.keyPressesPar,
                 ...firstStep
             }
         });
