@@ -161,14 +161,6 @@ function Leaderboard() {
                     </table>
                 </div>
             )}
-
-            <div className="leaderboard-footer">
-                <p className="scoring-info">
-                    {selectedChallenge === 'all'
-                        ? "🎯 Scores aggregated across all challenges. Higher is better!"
-                        : "🎯 Scores ranked by highest score (efficiency & speed)."}
-                </p>
-            </div>
         </div>
     );
 }
