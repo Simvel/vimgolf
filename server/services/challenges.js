@@ -408,7 +408,7 @@ const challenges = [
 
             // 1. Replacements / Suffixes
             const REPLACEMENTS = ["quack", "Lorem", "ipsum"];
-            const SUFFIXES = [" // TODO", " // WTF?", " // NOTE"];
+            const SUFFIXES = ["// TODO", "// WTF?", "// NOTE"];
 
             // 2. Line Replacements
             const NEW_LINES = ["return;", "let cc;", "var bob;"];

@@ -126,6 +126,7 @@ function ChallengeView() {
                         description: prev.challenge.description,
                         timePar: prev.challenge.timePar,
                         keyPressesPar: prev.challenge.keyPressesPar,
+                        help: prev.challenge.help,
                         // Replace all step-specific data with new step
                         ...result.step
                     }
