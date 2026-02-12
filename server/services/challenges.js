@@ -607,7 +607,7 @@ const challenges = [
         generate: (seed) => {
             const steps = [];
             const LINES = NAV_MIX_CODE.split('\n');
-            const numSteps = 10;
+            const numSteps = 15;
 
             // Helper functions
             const isKeyword = (char) => /[a-zA-Z0-9_]/.test(char);
@@ -682,14 +682,18 @@ const challenges = [
                             let currType = getType(line, col);
                             let p = { l: line, c: col };
                             if (currType !== 0) {
+                                let loopSafety = 0;
                                 while (true) {
+                                    if (loopSafety++ > 1000) break;
                                     const next = advance(p.l, p.c);
                                     if (next.eof || next.wrapped) { p = next; break; }
                                     p = next;
                                     if (getType(p.l, p.c) !== currType) break;
                                 }
                             }
+                            let loopSafety = 0;
                             while (true) {
+                                if (loopSafety++ > 1000) break;
                                 if (p.l === MAX_LINE && p.c === getLineLength(lines, p.l) - 1) break;
                                 if (getType(p.l, p.c) !== 0) break;
                                 const next = advance(p.l, p.c);
@@ -705,14 +709,18 @@ const challenges = [
                             if (line < MAX_LINE) { line++; col = 0; }
                         } else {
                             if (!isSpace(p.l, p.c)) {
+                                let loopSafety = 0;
                                 while (true) {
+                                    if (loopSafety++ > 1000) break;
                                     const next = advance(p.l, p.c);
                                     if (next.eof || next.wrapped) { p = next; break; }
                                     p = next;
                                     if (isSpace(p.l, p.c)) break;
                                 }
                             }
+                            let loopSafety = 0;
                             while (true) {
+                                if (loopSafety++ > 1000) break;
                                 if (p.l === MAX_LINE && p.c === getLineLength(lines, p.l) - 1) break;
                                 if (!isSpace(p.l, p.c)) break;
                                 const next = advance(p.l, p.c);
@@ -729,7 +737,9 @@ const challenges = [
 
                             let p = startP;
                             // 1. Skip spaces backwards
+                            let loopSafety = 0;
                             while (true) {
+                                if (loopSafety++ > 1000) break;
                                 if (getType(p.l, p.c) !== 0 && getType(p.l, p.c) !== 3) break; // Found non-space
                                 const prev = retreat(p.l, p.c);
                                 if (prev.bof) { p = prev; break; }
@@ -739,7 +749,9 @@ const challenges = [
                             // 2. Go to start of word
                             const targetType = getType(p.l, p.c);
                             if (targetType !== 0 && targetType !== 3) {
+                                loopSafety = 0;
                                 while (true) {
+                                    if (loopSafety++ > 1000) break;
                                     const prev = retreat(p.l, p.c);
                                     if (prev.bof || prev.wrapped || getType(prev.l, prev.c) !== targetType) break;
                                     p = prev;
@@ -755,7 +767,9 @@ const challenges = [
 
                             let p = startP;
                             // 1. Skip spaces backwards
+                            let loopSafety = 0;
                             while (true) {
+                                if (loopSafety++ > 1000) break;
                                 if (!isSpace(p.l, p.c) && getLineLength(lines, p.l) > 0) break;
                                 const prev = retreat(p.l, p.c);
                                 if (prev.bof) { p = prev; break; }
@@ -764,7 +778,9 @@ const challenges = [
 
                             // 2. Go to start of WORD
                             if (getLineLength(lines, p.l) > 0 && !isSpace(p.l, p.c)) {
+                                loopSafety = 0;
                                 while (true) {
+                                    if (loopSafety++ > 1000) break;
                                     const prev = retreat(p.l, p.c);
                                     if (prev.bof || prev.wrapped || isSpace(prev.l, prev.c)) break;
                                     p = prev;
@@ -793,13 +809,12 @@ const challenges = [
                 const stepSeed = seed + i * 111;
 
                 let typeWeights = { 'h': 1, 'l': 1, 'w': 1, 'b': 1, 'W': 1, 'B': 1, 'j': 1, 'k': 1 };
-                let countWeights = { 1: 10, 2: 5, 3: 5 };
+                let countWeights = { 1: 1.0, 2: 1.0, 3: 1.0, 4: 1.0 };
 
-                if (history.length > 0) {
-                    const last = history[history.length - 1];
-                    if (last.count === 3) {
-                        countWeights[3] = 1;
-                        countWeights[1] = 20;
+                // Penalize counts that have been used already
+                for (const h of history) {
+                    if (countWeights[h.count] !== undefined) {
+                        countWeights[h.count] *= 0.5;
                     }
                 }
                 if (typesHistory.words > (typesHistory.chars + typesHistory.lines + 2)) {
@@ -826,7 +841,7 @@ const challenges = [
                     const counts = Object.keys(countWeights);
                     const countPool = [];
                     for (const c of counts) {
-                        const w = countWeights[c];
+                        const w = Math.ceil(countWeights[c] * 100);
                         for (let k = 0; k < w; k++) countPool.push(parseInt(c));
                     }
                     count = countPool[randomInRange(stepSeed + attempts + 1, 0, countPool.length - 1)];
@@ -834,7 +849,7 @@ const challenges = [
                     nextPos = move(currentPos, type, count, LINES);
                 } while (
                     (nextPos.line === currentPos.line && nextPos.col === currentPos.col) &&
-                    attempts < 50
+                    attempts < 20
                 );
 
                 history.push({ type, count });
@@ -866,8 +881,8 @@ const challenges = [
 
             return { steps };
         },
-        timePar: 60000,
-        keyPressesPar: 25
+        timePar: 30000,
+        keyPressesPar: 28
     },
     {
         id: 5,
