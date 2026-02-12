@@ -960,7 +960,7 @@ const challenges = [
                         if (lineIdx + count <= lines.length) {
                             step.targetLine = lineIdx + 1;
                             step.deleteCount = count; // Used for multi-line highlighting
-                            step.instructions = `Delete ${count === 1 ? 'one line' : count + ' lines'} at Line ${lineIdx + 1} (${op}).`;
+                            step.instructions = `Delete ${count === 1 ? 'one line' : count + ' lines'} at Line ${lineIdx + 1}.`;
 
                             // Calculate new content
                             const nextLines = [...lines];

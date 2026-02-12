@@ -45,17 +45,16 @@ const vimTheme = EditorView.theme({
         backgroundColor: 'rgba(0, 255, 136, 0.15)',
     },
     '.cm-target-match': { // Default fallback
-        backgroundColor: 'rgba(0, 255, 136, 0.2)',
-        color: '#ffffff',
+        backgroundColor: 'rgba(42, 255, 34, 0.84)', // Lighter green, higher opacity
+        color: '#ffffff', // Keep text white for contrast
         fontWeight: 'bold',
         borderRadius: '2px',
         padding: '0 2px',
     },
     '.cm-delete-match': {
-        backgroundColor: 'rgba(248, 113, 113, 0.2)',
-        color: '#f87171',
+        backgroundColor: 'rgba(253, 55, 55, 1)',
+        color: '#ffeeeeff',
         fontWeight: 'bold',
-        textDecoration: 'line-through',
         borderRadius: '2px',
         padding: '0 2px',
     },
@@ -67,7 +66,7 @@ const vimTheme = EditorView.theme({
         padding: '0 2px',
     },
     '.cm-delete-line': {
-        backgroundColor: 'rgba(248, 113, 113, 0.15)',
+        backgroundColor: 'rgba(248, 113, 113, 0.41)',
     },
 });
 
