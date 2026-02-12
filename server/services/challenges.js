@@ -1023,7 +1023,7 @@ const challenges = [
                         step.highlightWord = textToDelete;
 
                         const unit = type === 'W' ? 'WORD' : 'word';
-                        step.instructions = `Delete ${count === 1 ? 'one ' + unit : count + ' ' + unit + 's'} ("${textToDelete.trim()}") at Line ${lineIdx + 1} (${op}).`;
+                        step.instructions = `Delete ${count === 1 ? 'one ' + unit : count + ' ' + unit + 's'} ("${textToDelete.trim()}") at Line ${lineIdx + 1}.`;
 
                         step.initialCursor = { ...currentCursor };
 
