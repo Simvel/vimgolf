@@ -332,7 +332,10 @@ router.get('/', (req, res) => {
             });
 
             // 3. Convert to array and sort
+            // 3. Filter complete players, convert to array and sort
+            const totalChallenges = challenges.length;
             const leaderboard = Object.values(playerStats)
+                .filter(player => player.challenges_completed === totalChallenges)
                 .sort((a, b) => b.score - a.score)
                 .slice(0, parseInt(limit));
 
