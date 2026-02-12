@@ -100,7 +100,8 @@ function VimEditor({
 
     initialCursor = null,
     overlays = EMPTY_OVERLAYS,
-    disabled = false
+    disabled = false,
+    shouldFocus = true
 }) {
     const editorRef = useRef(null);
     const viewRef = useRef(null);
@@ -126,6 +127,17 @@ function VimEditor({
             onKeystroke(keystroke, keystrokesRef.current.length);
         }
     }, [onKeystroke]);
+
+    // Focus management effect
+    useEffect(() => {
+        if (shouldFocus && viewRef.current && !disabled) {
+            // Small timeout to ensure DOM is ready and prevent fighting 
+            const timer = setTimeout(() => {
+                if (viewRef.current) viewRef.current.focus();
+            }, 10);
+            return () => clearTimeout(timer);
+        }
+    }, [shouldFocus, disabled]);
 
     // Check completion condition
     useEffect(() => {
@@ -204,18 +216,21 @@ function VimEditor({
             }
         });
 
-        // Block mouse clicks from moving the cursor (prevents cheating)
+        // Block mouse clicks from moving the cursor (prevents cheating) but ALLOW giving focus
         const blockMouseEvents = EditorView.domEventHandlers({
-            mousedown: (event) => {
+            mousedown: (event, view) => {
                 event.preventDefault();
+                view.focus();
                 return true;
             },
-            click: (event) => {
+            click: (event, view) => {
                 event.preventDefault();
+                view.focus();
                 return true;
             },
-            dblclick: (event) => {
+            dblclick: (event, view) => {
                 event.preventDefault();
+                view.focus();
                 return true;
             },
             scroll: () => {
@@ -521,7 +536,9 @@ function VimEditor({
         currentEditor.addEventListener('keydown', handleKeyDown, true);
 
         // Focus the editor
-        view.focus();
+        if (shouldFocus) {
+            view.focus();
+        }
 
         return () => {
             currentEditor?.removeEventListener('keydown', handleKeyDown, true);

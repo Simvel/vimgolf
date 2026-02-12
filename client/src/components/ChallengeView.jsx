@@ -410,6 +410,7 @@ function ChallengeView() {
                         initialCursor={challenge?.initialCursor}
                         overlays={challenge?.overlays}
                         disabled={submitting || intermission}
+                        shouldFocus={!showHelp && !submitting}
                     />
                 )}
             </div>
