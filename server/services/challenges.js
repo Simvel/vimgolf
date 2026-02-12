@@ -98,7 +98,7 @@ function randomInRange(seed, min, max) {
 // Generate a random large file for navigation
 function generateNavigationContent(seed) {
     const lines = [];
-    const count = 100;
+    const count = 30;
     for (let i = 1; i <= count; i++) {
         if (i % 10 === 0) {
             lines.push(`Line ${i}: [SECTION] Critical system marker #${randomInRange(seed + i, 1000, 9999)}`);
@@ -120,30 +120,40 @@ const challenges = [
         generate: (seed) => {
             const steps = [];
             const content = generateNavigationContent(seed);
-            const numSteps = 5;
+            const numSteps = 10;
+            const lines = content.split('\n');
+
+            // Create a pool of tasks: 2 of each type (0-4), total 10.
+            const taskTypes = [0, 0, 1, 1, 2, 2, 3, 3, 4, 4];
+
+            // Shuffle taskTypes deterministically
+            for (let i = taskTypes.length - 1; i > 0; i--) {
+                const j = randomInRange(seed + i * 777, 0, i);
+                [taskTypes[i], taskTypes[j]] = [taskTypes[j], taskTypes[i]];
+            }
 
             for (let i = 0; i < numSteps; i++) {
                 const stepSeed = seed + i * 100;
-                const type = i % 3;
+                const type = taskTypes[i];
                 let step = {
                     initialContent: content,
                     targetContent: content,
                     highlightType: 'target'
                 };
 
-                const lines = content.split('\n');
-
                 if (type === 0) { // Line navigation
-                    const targetLine = randomInRange(stepSeed, 5, 95);
+                    const targetLine = randomInRange(stepSeed, 5, 29);
                     step.instructions = `Move cursor to Line ${targetLine}.`;
                     step.targetLine = targetLine;
                     step.checkType = 'cursor_line';
                     step.targetValue = targetLine;
                 } else if (type === 1) { // Word navigation
-                    let searchLine = randomInRange(stepSeed, 10, 90);
-                    while (!lines[searchLine - 1].includes('data') && !lines[searchLine - 1].includes('SECTION')) {
+                    let searchLine = randomInRange(stepSeed, 10, 27);
+                    let attempts = 0;
+                    while (!lines[searchLine - 1].includes('data') && !lines[searchLine - 1].includes('SECTION') && attempts < 20) {
                         searchLine++;
-                        if (searchLine > 95) searchLine = 10;
+                        if (searchLine > 28) searchLine = 10;
+                        attempts++;
                     }
                     const targetWord = lines[searchLine - 1].includes('SECTION') ? 'SECTION' : 'value';
                     step.instructions = `Find the word "${targetWord}" on Line ${searchLine}.`;
@@ -153,20 +163,53 @@ const challenges = [
                     step.targetWord = targetWord;
                     step.highlightWord = targetWord;
                     step.highlightColumn = lines[searchLine - 1].indexOf(targetWord);
-                } else { // End of line
-                    const targetLine = randomInRange(stepSeed, 20, 80);
+                } else if (type === 2) { // End of line
+                    const targetLine = randomInRange(stepSeed, 13, 28);
                     step.instructions = `Move cursor to the END of Line ${targetLine}.`;
                     step.targetLine = targetLine;
                     step.checkType = 'cursor_eol';
                     step.targetValue = targetLine;
+                } else if (type === 3) { // Last line
+                    const targetLine = lines.length;
+                    step.instructions = "Move cursor to the last line (G).";
+                    step.targetLine = targetLine;
+                    step.checkType = 'cursor_line';
+                    step.targetValue = targetLine;
+                } else if (type === 4) { // Matching bracket
+                    // Find a line with {} brackets (no [])
+                    const candidates = [];
+                    for (let l = 0; l < lines.length; l++) {
+                        if (lines[l].includes('{')) candidates.push({ lineIdx: l, open: '{', close: '}' });
+                    }
+
+                    let chosen = { lineIdx: 9, open: '{', close: '}' }; // Default fallback
+                    if (candidates.length > 0) {
+                        chosen = candidates[randomInRange(stepSeed, 0, candidates.length - 1)];
+                    }
+
+                    const lineContent = lines[chosen.lineIdx];
+                    const openIdx = lineContent.indexOf(chosen.open);
+                    const closeIdx = lineContent.indexOf(chosen.close, openIdx);
+
+                    step.instructions = `Move to the matching bracket of "${chosen.open}" on Line ${chosen.lineIdx + 1} (try %).`;
+
+                    // Force start at opening bracket
+                    step.initialCursor = { line: chosen.lineIdx + 1, col: openIdx + 1 };
+
+                    step.targetLine = chosen.lineIdx + 1;
+                    step.checkType = 'cursor_position';
+                    step.targetValue = { line: chosen.lineIdx + 1, col: closeIdx + 1 };
+                    step.highlightColumn = closeIdx;
+                    step.highlightWord = chosen.close;
                 }
                 steps.push(step);
             }
 
             return { steps };
+
         },
-        timePar: 45000,
-        keyPressesPar: 20
+        timePar: 25000,
+        keyPressesPar: 27
     },
     {
         id: 2,

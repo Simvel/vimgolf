@@ -293,10 +293,7 @@ function ChallengeView() {
                                         <span className="stat-value">{result.keystrokes}</span>
                                         <span className="stat-label">Keystrokes</span>
                                     </div>
-                                    <div className="stat">
-                                        <span className="stat-value">#{result.rank}</span>
-                                        <span className="stat-label">Rank</span>
-                                    </div>
+
                                 </div>
                                 <div className="result-actions">
                                     <button onClick={startChallenge} className="retry-btn">

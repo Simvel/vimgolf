@@ -136,10 +136,9 @@ router.post('/submit', (req, res) => {
         const timePar = challengeDef?.timePar || 0;
         const keyPressesPar = challengeDef?.keyPressesPar || 0;
 
-        // Formula: 100 + (keyPressesPar - keyPresses) + ((timePar - time_ms) / 1000)
         // Using seconds for meaningful time difference
         const calculateScore = (tMs, kP) => {
-            return 100 + (keyPressesPar - kP) + Math.round((timePar - tMs) / 1000);
+            return (keyPressesPar - kP) + Math.round((timePar - tMs) / 1000);
         };
 
         const newScore = calculateScore(timeMs, keystrokeCount);
@@ -220,8 +219,7 @@ router.get('/', (req, res) => {
             const par = challengePars[challengeId];
             if (!par) return 0; // Should not happen if challenge exists
 
-            // Formula: 100 + (keyPressesPar - keyPresses) + ((timePar - time) / 1000)
-            return 100 + (par.keyPressesPar - keystrokes) + Math.round((par.timePar - timeMs) / 1000);
+            return (par.keyPressesPar - keystrokes) + Math.round((par.timePar - timeMs) / 1000);
         };
 
         if (challengeId) {
@@ -430,8 +428,8 @@ router.post('/reset', (req, res) => {
                         sessionId,
                         challenge.id,
                         'Simvel',
-                        1000,
-                        10,
+                        100000,
+                        100,
                         '[]'
                     );
                 } catch (e) {

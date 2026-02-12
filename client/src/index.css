@@ -701,7 +701,7 @@ body {
 }
 
 .retry-btn {
-  color: var(--text-primary);
+  color: white;
   border: 1px solid var(--accent-olive);
   background: var(--accent-olive);
   /* Olive border by default */
@@ -710,13 +710,14 @@ body {
 .view-leaderboard-btn {
   background: var(--accent-olive);
   /* Solid background */
-  border: 1px solid var(--accent-olive-bright);
+  border: 1px solid var(--accent-olive);
   color: white;
   /* White text */
 }
 
 .next-challenge-btn {
   background: var(--accent-olive);
+  border: 1px solid var(--accent-olive);
   color: white;
 }
 
