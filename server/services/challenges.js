@@ -109,7 +109,7 @@ function generateNavigationContent(seed) {
 const challenges = [
     {
         id: 1,
-        name: "Navigation",
+        name: "Navigation A",
         difficulty: "easy",
         description: "A chain of 5 navigation tasks. Move efficiently to the targets.",
         generate: (seed) => {
@@ -380,7 +380,7 @@ const challenges = [
     },
     {
         id: 3,
-        name: "Refactor A",
+        name: "Refactor",
         difficulty: "easy",
         description: "A series of replacement and formatting tasks.",
         generate: (seed) => {
@@ -893,7 +893,7 @@ const challenges = [
     {
         id: 5,
         name: "Deletion B",
-        difficulty: "easy",
+        difficulty: "medium",
         description: "Delete using precise Vim commands: dd, dw, dW, 2dd, etc.",
         generate: (seed) => {
             const steps = [];
@@ -1033,7 +1033,7 @@ const challenges = [
     },
     {
         id: 6,
-        name: "Yank & Paste A",
+        name: "Yank & Paste",
         difficulty: "medium",
         description: "Yank (copy) text and paste it in specific locations.",
         generate: (seed) => {
