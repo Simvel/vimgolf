@@ -1213,6 +1213,147 @@ const challenges = [
         },
         timePar: 30000,
         keyPressesPar: 40
+    },
+    {
+        id: 7,
+        name: "Yank & Paste B",
+        difficulty: "hard",
+        description: "Use registers to copy UUIDs and replace placeholders.",
+        generate: (seed) => {
+            const steps = [];
+
+            // 1. Generate UUIDs
+            const genUUID = (s, tag) => {
+                const r = (n) => {
+                    const x = Math.sin(s + n + tag.charCodeAt(0)) * 10000;
+                    return Math.floor((x - Math.floor(x)) * 16).toString(16);
+                };
+                let uuid = "";
+                let c = 0;
+                for (let i = 0; i < 36; i++) {
+                    if (i === 8 || i === 13 || i === 18 || i === 23) {
+                        uuid += "-";
+                    } else if (i === 14) {
+                        uuid += "4";
+                    } else if (i === 19) {
+                        uuid += "8";
+                    } else {
+                        uuid += r(c++);
+                    }
+                }
+                return uuid;
+            };
+
+            const uuids = {
+                A: genUUID(seed, 'A'),
+                B: genUUID(seed, 'B'),
+                C: genUUID(seed, 'C')
+            };
+
+            // Initial Content
+            let currentContent = `{
+  "A": "${uuids.A}",
+  "B": "${uuids.B}",
+  "C": "${uuids.C}"
+}
+
+const config = {
+  apiKey: "foo",
+  secret: "bar",
+  tenantId: "baz"
+};`;
+
+            // Steps 1-3: Replace placeholders
+            const placeholders = ["foo", "bar", "baz"];
+            const keys = ["A", "B", "C"];
+
+            // Shuffle placeholders and keys to randomize order
+            const shuffledPlaceholders = [...placeholders];
+            const shuffledKeys = [...keys];
+
+            for (let i = shuffledPlaceholders.length - 1; i > 0; i--) {
+                const j = Math.floor(seededRandom(seed + i) * (i + 1));
+                [shuffledPlaceholders[i], shuffledPlaceholders[j]] = [shuffledPlaceholders[j], shuffledPlaceholders[i]];
+            }
+            for (let i = shuffledKeys.length - 1; i > 0; i--) {
+                const j = Math.floor(seededRandom(seed + i + 100) * (i + 1));
+                [shuffledKeys[i], shuffledKeys[j]] = [shuffledKeys[j], shuffledKeys[i]];
+            }
+
+            for (let i = 0; i < 3; i++) {
+                const targetPlaceholder = shuffledPlaceholders[i];
+                const targetKey = shuffledKeys[i];
+                const targetUUID = uuids[targetKey];
+
+                const step = {
+                    checkType: 'content_match',
+                    highlightType: 'change'
+                };
+
+                // Find line of placeholder
+                const lines = currentContent.split('\n');
+                let lineIdx = -1;
+                for (let l = 0; l < lines.length; l++) {
+                    if (lines[l].includes(`"${targetPlaceholder}"`)) {
+                        lineIdx = l;
+                        break;
+                    }
+                }
+
+                step.instructions = `Change "${targetPlaceholder}" to UUID ${targetKey}.`;
+                if (lineIdx !== -1) {
+                    step.targetLine = lineIdx + 1;
+                    step.highlightWord = targetPlaceholder;
+                    step.highlightColumn = lines[lineIdx].indexOf(targetPlaceholder);
+
+                    step.overlays = [{
+                        line: lineIdx + 1,
+                        col: lines[lineIdx].indexOf(targetPlaceholder) + 1,
+                        text: `Change to UUID ${targetKey}`
+                    }];
+                }
+
+                const nextContent = currentContent.replace(targetPlaceholder, targetUUID);
+                step.initialContent = currentContent;
+                step.targetContent = nextContent;
+
+                steps.push(step);
+                currentContent = nextContent;
+            }
+
+            // Step 4: Concatenation task
+            const finalUUIDs = [
+                genUUID(seed + 100, 'X'),
+                genUUID(seed + 101, 'Y'),
+                genUUID(seed + 102, 'Z')
+            ];
+
+            const step5Content = `${finalUUIDs[0]}
+${finalUUIDs[1]}
+${finalUUIDs[2]}`;
+
+            const targetConcatenation = finalUUIDs[0] + finalUUIDs[1] + finalUUIDs[2]; // Concat all 3
+            // Target: 3 lines of UUIDs + concatenated line (4th line)
+            const step5TargetContent = step5Content + '\n' + targetConcatenation;
+
+            const step5 = {
+                checkType: 'content_match',
+                initialContent: step5Content,
+                targetContent: step5TargetContent,
+                instructions: `Create a new 4th line that is the concatenation of all three UUIDs found above.`,
+                overlays: [{
+                    line: 4,
+                    col: 1,
+                    text: `Concatenate All 3 UUIDs`
+                }]
+            };
+
+            steps.push(step5);
+
+            return { steps };
+        },
+        timePar: 55000,
+        keyPressesPar: 80
     }
 ];
 
