@@ -114,8 +114,8 @@ const challenges = [
         description: "Navigate using h, j, k, l, w, b, W, B. Follow the optimal path.",
         help: [
             {
-                title: "Advanced Navigation",
-                content: "<ul><li><code>W</code>: Jump forward by WORD (space-separated)</li><li><code>B</code>: Jump backward by WORD</li><li><code>f{char}</code>: Find occurrence of {char} to the right</li><li><code>t{char}</code>: Move 'till' occurrence of {char} to the right</li><li><code>;</code>: Repeat latest f, t, F or T</li><li><code>}</code>: Jump forward by paragraph</li></ul>"
+                title: "Basic Navigation",
+                content: "<ul><li><code>h</code>, <code>j</code>, <code>k</code>, <code>l</code>: Move Left, Down, Up, Right</li><li><code>w</code> / <code>W</code>: Jump forward by word / WORD (space-separated)</li><li><code>b</code> / <code>B</code>: Jump backward by word / WORD</li><li><code>3w</code>, <code>10j</code>: Combine numbers with movements to move multiple steps</li></ul>"
             }
         ],
         generate: (seed) => {
@@ -416,8 +416,12 @@ const challenges = [
         description: "A chain of 5 navigation tasks. Move efficiently to the targets.",
         help: [
             {
-                title: "Navigation Basics",
-                content: "<ul><li><code>h</code>, <code>j</code>, <code>k</code>, <code>l</code>: Move Left, Down, Up, Right</li><li><code>w</code>: Jump forward to start of word</li><li><code>b</code>: Jump backward to start of word</li><li><code>0</code>: Jump to start of line</li><li><code>$</code>: Jump to end of line</li><li><code>gg</code>: Go to first line</li><li><code>G</code>: Go to last line</li><li><code>%</code>: Move to matching bracket</li></ul>"
+                title: "Basic Navigation",
+                content: "<ul><li><code>h</code>, <code>j</code>, <code>k</code>, <code>l</code>: Move Left, Down, Up, Right</li><li><code>w</code> / <code>W</code>: Jump forward by word / WORD (space-separated)</li><li><code>b</code> / <code>B</code>: Jump backward by word / WORD</li><li><code>3w</code>, <code>10j</code>: Combine numbers with movements to move multiple steps</li></ul>"
+            },
+            {
+                title: "Advanced Navigation",
+                content: "<ul><li><code>%</code>: Jump to matching bracket</li><li><code>G</code>: Go to last line</li><li><code>13G</code>: Go to line 13</li><li><code>$</code>: Go to end of line</li><li><code>f{char}</code>: Go to next occurrence of {char}</li><li><code>;</code>: Repeat search</li></ul>"
             }
         ],
         generate: (seed) => {
@@ -523,6 +527,10 @@ const challenges = [
             {
                 title: "Deletion Commands",
                 content: "<ul><li><code>x</code>: Delete character under cursor</li><li><code>dd</code>: Delete (cut) current line</li><li><code>dw</code>: Delete (cut) from cursor to next word start</li><li><code>u</code>: Undo change</li></ul>"
+            },
+            {
+                title: "Navigation Tip",
+                content: "<ul><li><code>t{char}</code>: Jump to just before {char}</li></ul>"
             }
         ],
         generate: (seed) => {
@@ -1258,7 +1266,7 @@ const challenges = [
         help: [
             {
                 title: "Registers",
-                content: "<ul><li><code>\"ay</code>: Yank into register 'a'</li><li><code>\"ap</code>: Paste from register 'a'</li><li><code>\"byy</code>: Yank line into register 'b'</li></ul>"
+                content: "<ul><li><code>\"ay</code>: Yank into register 'a'</li><li><code>\"Ay</code>: Append to register 'a'</li><li><code>\"ap</code>: Paste from register 'a'</li><li><code>:reg</code>: View contents of registers</li></ul>"
             },
             {
                 title: "Visual Mode",

@@ -121,7 +121,7 @@ function Leaderboard() {
                                 function getPlayerNameColor(s) {
                                     if (s === undefined || s === null) return 'inherit';
                                     const isAll = selectedChallenge === 'all';
-                                    const threshold = isAll ? -70 : -10;
+                                    const threshold = isAll ? -140 : -20;
 
                                     if (s < threshold) return 'var(--hard)';
                                     if (s <= 0) return 'var(--accent-green)';
