@@ -111,511 +111,6 @@ const challenges = [
         id: 1,
         name: "Navigation A",
         difficulty: "easy",
-        description: "A chain of 5 navigation tasks. Move efficiently to the targets.",
-        help: [
-            {
-                title: "Navigation Basics",
-                content: "<ul><li><code>h</code>, <code>j</code>, <code>k</code>, <code>l</code>: Move Left, Down, Up, Right</li><li><code>w</code>: Jump forward to start of word</li><li><code>b</code>: Jump backward to start of word</li><li><code>0</code>: Jump to start of line</li><li><code>$</code>: Jump to end of line</li><li><code>gg</code>: Go to first line</li><li><code>G</code>: Go to last line</li><li><code>%</code>: Move to matching bracket</li></ul>"
-            }
-        ],
-        generate: (seed) => {
-            const steps = [];
-            const content = generateNavigationContent(seed);
-            const numSteps = 10;
-            const lines = content.split('\n');
-
-            // Create a pool of tasks: 2 of each type (0-4), total 10.
-            const taskTypes = [0, 0, 1, 1, 2, 2, 3, 3, 4, 4];
-
-            // Shuffle taskTypes deterministically
-            for (let i = taskTypes.length - 1; i > 0; i--) {
-                const j = randomInRange(seed + i * 777, 0, i);
-                [taskTypes[i], taskTypes[j]] = [taskTypes[j], taskTypes[i]];
-            }
-
-            for (let i = 0; i < numSteps; i++) {
-                const stepSeed = seed + i * 100;
-                const type = taskTypes[i];
-                let step = {
-                    initialContent: content,
-                    targetContent: content,
-                    highlightType: 'target'
-                };
-
-                if (type === 0) { // Line navigation
-                    const targetLine = randomInRange(stepSeed, 5, 29);
-                    step.instructions = `Move cursor to Line ${targetLine}.`;
-                    step.targetLine = targetLine;
-                    step.checkType = 'cursor_line';
-                    step.targetValue = targetLine;
-                } else if (type === 1) { // Word navigation
-                    let searchLine = randomInRange(stepSeed, 10, 27);
-                    let attempts = 0;
-                    while (!lines[searchLine - 1].includes('data') && !lines[searchLine - 1].includes('SECTION') && attempts < 20) {
-                        searchLine++;
-                        if (searchLine > 28) searchLine = 10;
-                        attempts++;
-                    }
-                    const targetWord = lines[searchLine - 1].includes('SECTION') ? 'SECTION' : 'value';
-                    step.instructions = `Find the word "${targetWord}" on Line ${searchLine}.`;
-                    step.targetLine = searchLine;
-                    step.checkType = 'cursor_word';
-                    step.targetValue = targetWord;
-                    step.targetWord = targetWord;
-                    step.highlightWord = targetWord;
-                    step.highlightColumn = lines[searchLine - 1].indexOf(targetWord);
-                } else if (type === 2) { // End of line
-                    const targetLine = randomInRange(stepSeed, 13, 28);
-                    step.instructions = `Move cursor to the END of Line ${targetLine}.`;
-                    step.targetLine = targetLine;
-                    step.checkType = 'cursor_eol';
-                    step.targetValue = targetLine;
-                } else if (type === 3) { // Last line
-                    const targetLine = lines.length;
-                    step.instructions = "Move cursor to the last line.";
-                    step.targetLine = targetLine;
-                    step.checkType = 'cursor_line';
-                    step.targetValue = targetLine;
-                } else if (type === 4) { // Matching bracket
-                    // Find a line with {} brackets (no [])
-                    const candidates = [];
-                    for (let l = 0; l < lines.length; l++) {
-                        if (lines[l].includes('{')) candidates.push({ lineIdx: l, open: '{', close: '}' });
-                    }
-
-                    let chosen = { lineIdx: 9, open: '{', close: '}' }; // Default fallback
-                    if (candidates.length > 0) {
-                        chosen = candidates[randomInRange(stepSeed, 0, candidates.length - 1)];
-                    }
-
-                    const lineContent = lines[chosen.lineIdx];
-                    const openIdx = lineContent.indexOf(chosen.open);
-                    const closeIdx = lineContent.indexOf(chosen.close, openIdx);
-
-                    step.instructions = `Move to the matching bracket of "${chosen.open}" on Line ${chosen.lineIdx + 1}.`;
-
-                    // Force start at opening bracket
-                    step.initialCursor = { line: chosen.lineIdx + 1, col: openIdx + 1 };
-
-                    step.targetLine = chosen.lineIdx + 1;
-                    step.checkType = 'cursor_position';
-                    step.targetValue = { line: chosen.lineIdx + 1, col: closeIdx + 1 };
-                    step.highlightColumn = closeIdx;
-                    step.highlightWord = chosen.close;
-                }
-                steps.push(step);
-            }
-
-            return { steps };
-
-        },
-        timePar: 25000,
-        keyPressesPar: 27
-    },
-    {
-        id: 2,
-        name: "Deletion A",
-        difficulty: "easy",
-        description: "Sequentially delete unwanted code from the file.",
-        help: [
-            {
-                title: "Deletion Commands",
-                content: "<ul><li><code>x</code>: Delete character under cursor</li><li><code>dd</code>: Delete (cut) current line</li><li><code>dw</code>: Delete (cut) from cursor to next word start</li><li><code>u</code>: Undo change</li></ul>"
-            }
-        ],
-        generate: (seed) => {
-            const steps = [];
-            let currentContent = EXPANDED_CODE_SAMPLE;
-            const numSteps = 6;
-
-            // Create a pool of tasks: 2 of each type (0-2)
-            const taskTypes = [0, 0, 1, 1, 2, 2];
-
-            // Shuffle taskTypes deterministically
-            for (let i = taskTypes.length - 1; i > 0; i--) {
-                const j = randomInRange(seed + i * 777, 0, i);
-                [taskTypes[i], taskTypes[j]] = [taskTypes[j], taskTypes[i]];
-            }
-
-            for (let i = 0; i < numSteps; i++) {
-                const stepSeed = seed + i * 50;
-                const type = taskTypes[i];
-                const lines = currentContent.split('\n');
-
-                let step = {
-                    checkType: 'content_match',
-                    highlightType: 'delete'
-                };
-
-                let nextContent = '';
-                let validStep = false;
-                let targetLineIdx = -1;
-
-                if (type === 0) {
-                    // Type 0: Delete Line
-                    let attempts = 0;
-                    while (targetLineIdx === -1 && attempts < 100) {
-                        // Avoid first/last lines if possible
-                        const idx = randomInRange(stepSeed + attempts, 1, lines.length - 2);
-                        if (lines[idx].trim().length > 5) {
-                            targetLineIdx = idx;
-                        }
-                        attempts++;
-                    }
-                    if (targetLineIdx === -1) targetLineIdx = 5;
-
-                    const lineContent = lines[targetLineIdx];
-                    const nextLines = [...lines];
-                    nextLines.splice(targetLineIdx, 1);
-                    nextContent = nextLines.join('\n');
-
-                    step.instructions = `Delete line ${targetLineIdx + 1}: "${lineContent.trim()}"`;
-                    step.targetLine = targetLineIdx + 1;
-                    step.startLine = targetLineIdx + 1;
-                    validStep = true;
-
-                } else if (type === 1) {
-                    // Type 1: Delete Word
-                    // Find a line that has words
-                    let attempts = 0;
-                    while (targetLineIdx === -1 && attempts < 100) {
-                        const idx = randomInRange(stepSeed + attempts + 1000, 1, lines.length - 2);
-                        if (lines[idx].trim().length > 10) {
-                            // Must have at least one word > 2 chars
-                            if (/\b\w{3,}\b/.test(lines[idx])) targetLineIdx = idx;
-                        }
-                        attempts++;
-                    }
-                    if (targetLineIdx === -1) targetLineIdx = 7;
-
-                    const lineContent = lines[targetLineIdx];
-                    const wordsMap = [];
-                    let match;
-                    const wordRegex = /\b\w+\b/g;
-                    while ((match = wordRegex.exec(lineContent)) !== null) {
-                        if (match[0].length > 2) {
-                            wordsMap.push({ word: match[0], index: match.index });
-                        }
-                    }
-
-                    if (wordsMap.length > 0) {
-                        const targetObj = wordsMap[randomInRange(stepSeed, 0, wordsMap.length - 1)];
-                        const wordToDelete = targetObj.word;
-
-                        // Vim dw logic simulation
-                        const prefix = lineContent.substring(0, targetObj.index);
-                        const suffix = lineContent.substring(targetObj.index + wordToDelete.length);
-                        let newLine;
-
-                        if (suffix.startsWith(' ')) {
-                            newLine = prefix + suffix.substring(1);
-                        } else {
-                            newLine = prefix + suffix;
-                        }
-
-                        const nextLines = [...lines];
-                        nextLines[targetLineIdx] = newLine;
-                        nextContent = nextLines.join('\n');
-
-                        step.instructions = `Delete the word "${wordToDelete}" on line ${targetLineIdx + 1}.`;
-                        step.highlightWord = wordToDelete;
-                        step.highlightColumn = targetObj.index;
-                        step.targetLine = targetLineIdx + 1;
-                        step.startLine = targetLineIdx + 1;
-                        validStep = true;
-                    }
-                } else if (type === 2) {
-                    // Type 2: Delete 's' from 'items'
-                    const candidates = [];
-                    for (let l = 0; l < lines.length; l++) {
-                        let match;
-                        const regex = /items/g;
-                        while ((match = regex.exec(lines[l])) !== null) {
-                            if (match[0] === 'items') {
-                                candidates.push({ line: l, index: match.index, word: match[0] });
-                            }
-                        }
-                    }
-
-                    if (candidates.length > 0) {
-                        const choice = candidates[randomInRange(stepSeed, 0, candidates.length - 1)];
-                        const lineContent = lines[choice.line];
-
-                        // The 's' is at choice.index + 4 ("items" is 5 chars, indices 0-4)
-                        const sIndex = choice.index + 4;
-                        const sChar = lineContent[sIndex];
-
-                        if (sChar === 's') {
-                            // Delete just the 's'
-                            const newLine = lineContent.substring(0, sIndex) + lineContent.substring(sIndex + 1);
-
-                            const nextLines = [...lines];
-                            nextLines[choice.line] = newLine;
-                            nextContent = nextLines.join('\n');
-
-                            step.instructions = `Go to "${choice.word}" on line ${choice.line + 1} and delete the "s" at the end.`;
-                            step.highlightWord = "s"; // Highlighting just the 's'
-                            step.highlightColumn = sIndex;
-                            step.targetLine = choice.line + 1;
-                            step.startLine = choice.line + 1;
-                            validStep = true;
-                        }
-                    }
-                }
-
-                // Fallback
-                if (!validStep) {
-                    const fallbackIdx = 6;
-                    const nextLines = [...lines];
-                    if (nextLines.length > fallbackIdx) {
-                        nextLines.splice(fallbackIdx, 1);
-                        nextContent = nextLines.join('\n');
-                        step.instructions = `Delete line ${fallbackIdx + 1}.`;
-                        step.targetLine = fallbackIdx + 1;
-                        step.startLine = fallbackIdx + 1;
-                    } else {
-                        // Extremely unlikely fallback
-                        nextContent = currentContent;
-                    }
-                }
-
-                step.initialContent = currentContent;
-                step.targetContent = nextContent;
-                steps.push(step);
-                currentContent = nextContent;
-            }
-
-            return { steps };
-        },
-        timePar: 22000,
-        keyPressesPar: 33
-    },
-    {
-        id: 3,
-        name: "Refactor",
-        difficulty: "easy",
-        description: "A series of replacement and formatting tasks.",
-        help: [
-            {
-                title: "Changing Text",
-                content: "<ul><li><code>r</code>: Replace single character</li><li><code>cw</code>: Change word (delete word and enter insert mode)</li><li><code>cc</code>: Change entire line</li><li><code>C</code>: Change from cursor to end of line</li><li><code>A</code>: Append text at end of line</li><li><code>I</code>: Insert text at start of line</li></ul>"
-            }
-        ],
-        generate: (seed) => {
-            const steps = [];
-            let currentContent = EXPANDED_CODE_SAMPLE;
-            const numSteps = 6;
-
-            // 1. Replacements / Suffixes
-            const REPLACEMENTS = ["quack", "Lorem", "ipsum"];
-            const SUFFIXES = ["// TODO", "// WTF?", "// NOTE"];
-
-            // 2. Line Replacements
-            const NEW_LINES = ["return;", "let cc;", "var bob;"];
-            const taskTypes = [0, 0, 1, 1, 2, 2];
-
-            // Shuffle types
-            for (let i = taskTypes.length - 1; i > 0; i--) {
-                const j = randomInRange(seed + i * 99, 0, i);
-                [taskTypes[i], taskTypes[j]] = [taskTypes[j], taskTypes[i]];
-            }
-
-            for (let i = 0; i < numSteps; i++) {
-                const stepSeed = seed + i * 77;
-                const lines = currentContent.split('\n');
-                let step = null;
-                const type = taskTypes[i % taskTypes.length]; // cycle if numSteps > 5
-
-                if (type === 0) {
-                    // --- Type 0: Word Replacement or Suffix Append ---
-                    // Find a suitable line (not empty, valid words)
-                    let targetLineIdx = -1;
-                    let attempts = 0;
-                    while (targetLineIdx === -1 && attempts < 50) {
-                        const idx = randomInRange(stepSeed + attempts, 1, lines.length - 2);
-                        if (lines[idx].trim().length > 5 && !lines[idx].includes('quantity:')) {
-                            targetLineIdx = idx;
-                        }
-                        attempts++;
-                    }
-                    if (targetLineIdx === -1) targetLineIdx = 10; // Fallback
-
-                    const lineContent = lines[targetLineIdx];
-                    const words = lineContent.match(/\b\w+\b/g);
-
-                    // Decide: Replace Word (0) or Append Suffix (1)
-                    const subType = randomInRange(stepSeed, 0, 1);
-
-                    step = {
-                        targetLine: targetLineIdx + 1,
-                        checkType: 'content_match',
-                        highlightType: 'change'
-                    };
-
-                    if (words && words.length > 0 && subType === 0) {
-                        // Replace Word
-                        const targetWord = words[randomInRange(stepSeed + 1, 0, words.length - 1)];
-                        const newWord = REPLACEMENTS[randomInRange(stepSeed + 2, 0, REPLACEMENTS.length - 1)];
-                        const newLine = lineContent.replace(targetWord, newWord);
-
-                        step.instructions = `Change "${targetWord}" to "${newWord}" on line ${targetLineIdx + 1}.`;
-                        step.highlightWord = targetWord;
-                        step.highlightColumn = lineContent.indexOf(targetWord);
-                        step.overlays = [{
-                            line: targetLineIdx + 1,
-                            col: lineContent.indexOf(targetWord) + 1,
-                            text: `Change to "${newWord}"`
-                        }];
-
-                        const nextLines = [...lines];
-                        nextLines[targetLineIdx] = newLine;
-                        step.initialContent = currentContent;
-                        step.targetContent = nextLines.join('\n');
-
-                    } else {
-                        // Append Suffix
-                        const suffix = SUFFIXES[randomInRange(stepSeed + 3, 0, SUFFIXES.length - 1)];
-                        const newLine = lineContent + suffix;
-
-                        step.instructions = `Append "${suffix.trim()}" to the end of line ${targetLineIdx + 1}.`;
-                        step.overlays = [{
-                            line: targetLineIdx + 1,
-                            col: lineContent.length + 1,
-                            text: `Append "${suffix.trim()}"`
-                        }];
-
-                        const nextLines = [...lines];
-                        nextLines[targetLineIdx] = newLine;
-                        step.initialContent = currentContent;
-                        step.targetContent = nextLines.join('\n');
-                    }
-                } else if (type === 1) {
-                    // --- Type 1: Entire Line Replacement ---
-                    let targetLineIdx = -1;
-                    let attempts = 0;
-                    while (targetLineIdx === -1 && attempts < 50) {
-                        // Prefer lines inside functions (indented)
-                        const idx = randomInRange(stepSeed + attempts * 2, 6, 28);
-                        const line = lines[idx] || "";
-                        // Simple heuristic for indentation: starts with space, and long enough to be interesting
-                        if (line.startsWith('  ') && line.trim().length > 20) {
-                            targetLineIdx = idx;
-                        }
-                        attempts++;
-                    }
-                    if (targetLineIdx === -1) targetLineIdx = 12;
-
-                    const originalLine = lines[targetLineIdx];
-                    const indentMatch = originalLine.match(/^\s*/);
-                    const indent = indentMatch ? indentMatch[0] : "";
-
-                    const newContentRaw = NEW_LINES[randomInRange(stepSeed, 0, NEW_LINES.length - 1)];
-                    const newLine = indent + newContentRaw;
-
-                    step = {
-                        targetLine: targetLineIdx + 1,
-                        checkType: 'content_match',
-                        highlightType: 'change',
-                        instructions: `Change the entire line ${targetLineIdx + 1} to "${newContentRaw}" (keep indentation).`,
-                        initialContent: currentContent,
-                        overlays: [{
-                            line: targetLineIdx + 1,
-                            col: indent.length + 1,
-                            text: `Change line to "${newContentRaw}"`
-                        }]
-                    };
-
-                    const nextLines = [...lines];
-                    nextLines[targetLineIdx] = newLine;
-                    step.targetContent = nextLines.join('\n');
-
-                } else if (type === 2) {
-                    // --- Type 2: Quantity Change ---
-                    // Find lines resembling: { ... quantity: N, ... }
-                    const quantityCandidates = [];
-                    const pattern = /quantity:\s*(\d+)/;
-
-                    for (let l = 0; l < lines.length; l++) {
-                        const match = lines[l].match(pattern);
-                        if (match) {
-                            quantityCandidates.push({
-                                lineIdx: l,
-                                value: parseInt(match[1]),
-                                fullMatch: match[0],
-                                index: match.index
-                            });
-                        }
-                    }
-
-                    if (quantityCandidates.length > 0) {
-                        const choice = quantityCandidates[randomInRange(stepSeed, 0, quantityCandidates.length - 1)];
-
-                        let newQty = choice.value;
-                        let qtyAttempts = 0;
-                        // specific logic: "any other single digit"
-                        while (newQty === choice.value && qtyAttempts < 10) {
-                            newQty = randomInRange(stepSeed + newQty + 1 + qtyAttempts, 1, 9);
-                            qtyAttempts++;
-                        }
-                        if (newQty === choice.value) {
-                            newQty = (newQty === 9) ? 1 : newQty + 1; // Deterministic fallback
-                        }
-
-                        const newLine = lines[choice.lineIdx].replace(
-                            `quantity: ${choice.value}`,
-                            `quantity: ${newQty}`
-                        );
-
-                        step = {
-                            targetLine: choice.lineIdx + 1,
-                            checkType: 'content_match',
-                            highlightType: 'change',
-                            instructions: `Change quantity from ${choice.value} to ${newQty} on line ${choice.lineIdx + 1}.`,
-                            initialContent: currentContent,
-                            highlightWord: String(choice.value),
-                            highlightColumn: choice.index + 10, // "quantity: ".length is roughly 10
-                            overlays: [{
-                                line: choice.lineIdx + 1,
-                                col: choice.index + 10 + 1,
-                                text: `Change to ${newQty}`
-                            }]
-                        };
-
-                        const nextLines = [...lines];
-                        nextLines[choice.lineIdx] = newLine;
-                        step.targetContent = nextLines.join('\n');
-                    } else {
-                        // Fallback to Type 0 if no quantity found (shouldn't happen with EXPANDED_CODE_SAMPLE)
-                        // ... (Re-use Type 0 logic or just skip/no-op? Better to just pick a random line replacement fallback)
-                        const fallbackIdx = 13;
-                        step = {
-                            targetLine: fallbackIdx,
-                            checkType: 'content_match',
-                            highlightType: 'change',
-                            instructions: `Delete line ${fallbackIdx} (fallback).`, // Simple fallback
-                            initialContent: currentContent
-                        };
-                        const nextLines = [...lines];
-                        nextLines.splice(fallbackIdx - 1, 1);
-                        step.targetContent = nextLines.join('\n');
-                    }
-                }
-
-                if (step) {
-                    currentContent = step.targetContent;
-                    steps.push(step);
-                }
-            }
-
-            return { steps };
-        },
-        timePar: 30000,
-        keyPressesPar: 65
-    },
-    {
-        id: 4,
-        name: "Navigation B",
-        difficulty: "easy",
         description: "Navigate using h, j, k, l, w, b, W, B. Follow the optimal path.",
         help: [
             {
@@ -913,6 +408,511 @@ const challenges = [
         },
         timePar: 30000,
         keyPressesPar: 26
+    },
+    {
+        id: 2,
+        name: "Navigation B",
+        difficulty: "easy",
+        description: "A chain of 5 navigation tasks. Move efficiently to the targets.",
+        help: [
+            {
+                title: "Navigation Basics",
+                content: "<ul><li><code>h</code>, <code>j</code>, <code>k</code>, <code>l</code>: Move Left, Down, Up, Right</li><li><code>w</code>: Jump forward to start of word</li><li><code>b</code>: Jump backward to start of word</li><li><code>0</code>: Jump to start of line</li><li><code>$</code>: Jump to end of line</li><li><code>gg</code>: Go to first line</li><li><code>G</code>: Go to last line</li><li><code>%</code>: Move to matching bracket</li></ul>"
+            }
+        ],
+        generate: (seed) => {
+            const steps = [];
+            const content = generateNavigationContent(seed);
+            const numSteps = 10;
+            const lines = content.split('\n');
+
+            // Create a pool of tasks: 2 of each type (0-4), total 10.
+            const taskTypes = [0, 0, 1, 1, 2, 2, 3, 3, 4, 4];
+
+            // Shuffle taskTypes deterministically
+            for (let i = taskTypes.length - 1; i > 0; i--) {
+                const j = randomInRange(seed + i * 777, 0, i);
+                [taskTypes[i], taskTypes[j]] = [taskTypes[j], taskTypes[i]];
+            }
+
+            for (let i = 0; i < numSteps; i++) {
+                const stepSeed = seed + i * 100;
+                const type = taskTypes[i];
+                let step = {
+                    initialContent: content,
+                    targetContent: content,
+                    highlightType: 'target'
+                };
+
+                if (type === 0) { // Line navigation
+                    const targetLine = randomInRange(stepSeed, 5, 29);
+                    step.instructions = `Move cursor to Line ${targetLine}.`;
+                    step.targetLine = targetLine;
+                    step.checkType = 'cursor_line';
+                    step.targetValue = targetLine;
+                } else if (type === 1) { // Word navigation
+                    let searchLine = randomInRange(stepSeed, 10, 27);
+                    let attempts = 0;
+                    while (!lines[searchLine - 1].includes('data') && !lines[searchLine - 1].includes('SECTION') && attempts < 20) {
+                        searchLine++;
+                        if (searchLine > 28) searchLine = 10;
+                        attempts++;
+                    }
+                    const targetWord = lines[searchLine - 1].includes('SECTION') ? 'SECTION' : 'value';
+                    step.instructions = `Find the word "${targetWord}" on Line ${searchLine}.`;
+                    step.targetLine = searchLine;
+                    step.checkType = 'cursor_word';
+                    step.targetValue = targetWord;
+                    step.targetWord = targetWord;
+                    step.highlightWord = targetWord;
+                    step.highlightColumn = lines[searchLine - 1].indexOf(targetWord);
+                } else if (type === 2) { // End of line
+                    const targetLine = randomInRange(stepSeed, 13, 28);
+                    step.instructions = `Move cursor to the END of Line ${targetLine}.`;
+                    step.targetLine = targetLine;
+                    step.checkType = 'cursor_eol';
+                    step.targetValue = targetLine;
+                } else if (type === 3) { // Last line
+                    const targetLine = lines.length;
+                    step.instructions = "Move cursor to the last line.";
+                    step.targetLine = targetLine;
+                    step.checkType = 'cursor_line';
+                    step.targetValue = targetLine;
+                } else if (type === 4) { // Matching bracket
+                    // Find a line with {} brackets (no [])
+                    const candidates = [];
+                    for (let l = 0; l < lines.length; l++) {
+                        if (lines[l].includes('{')) candidates.push({ lineIdx: l, open: '{', close: '}' });
+                    }
+
+                    let chosen = { lineIdx: 9, open: '{', close: '}' }; // Default fallback
+                    if (candidates.length > 0) {
+                        chosen = candidates[randomInRange(stepSeed, 0, candidates.length - 1)];
+                    }
+
+                    const lineContent = lines[chosen.lineIdx];
+                    const openIdx = lineContent.indexOf(chosen.open);
+                    const closeIdx = lineContent.indexOf(chosen.close, openIdx);
+
+                    step.instructions = `Move to the matching bracket of "${chosen.open}" on Line ${chosen.lineIdx + 1}.`;
+
+                    // Force start at opening bracket
+                    step.initialCursor = { line: chosen.lineIdx + 1, col: openIdx + 1 };
+
+                    step.targetLine = chosen.lineIdx + 1;
+                    step.checkType = 'cursor_position';
+                    step.targetValue = { line: chosen.lineIdx + 1, col: closeIdx + 1 };
+                    step.highlightColumn = closeIdx;
+                    step.highlightWord = chosen.close;
+                }
+                steps.push(step);
+            }
+
+            return { steps };
+
+        },
+        timePar: 25000,
+        keyPressesPar: 27
+    },
+    {
+        id: 3,
+        name: "Deletion A",
+        difficulty: "easy",
+        description: "Sequentially delete unwanted code from the file.",
+        help: [
+            {
+                title: "Deletion Commands",
+                content: "<ul><li><code>x</code>: Delete character under cursor</li><li><code>dd</code>: Delete (cut) current line</li><li><code>dw</code>: Delete (cut) from cursor to next word start</li><li><code>u</code>: Undo change</li></ul>"
+            }
+        ],
+        generate: (seed) => {
+            const steps = [];
+            let currentContent = EXPANDED_CODE_SAMPLE;
+            const numSteps = 6;
+
+            // Create a pool of tasks: 2 of each type (0-2)
+            const taskTypes = [0, 0, 1, 1, 2, 2];
+
+            // Shuffle taskTypes deterministically
+            for (let i = taskTypes.length - 1; i > 0; i--) {
+                const j = randomInRange(seed + i * 777, 0, i);
+                [taskTypes[i], taskTypes[j]] = [taskTypes[j], taskTypes[i]];
+            }
+
+            for (let i = 0; i < numSteps; i++) {
+                const stepSeed = seed + i * 50;
+                const type = taskTypes[i];
+                const lines = currentContent.split('\n');
+
+                let step = {
+                    checkType: 'content_match',
+                    highlightType: 'delete'
+                };
+
+                let nextContent = '';
+                let validStep = false;
+                let targetLineIdx = -1;
+
+                if (type === 0) {
+                    // Type 0: Delete Line
+                    let attempts = 0;
+                    while (targetLineIdx === -1 && attempts < 100) {
+                        // Avoid first/last lines if possible
+                        const idx = randomInRange(stepSeed + attempts, 1, lines.length - 2);
+                        if (lines[idx].trim().length > 5) {
+                            targetLineIdx = idx;
+                        }
+                        attempts++;
+                    }
+                    if (targetLineIdx === -1) targetLineIdx = 5;
+
+                    const lineContent = lines[targetLineIdx];
+                    const nextLines = [...lines];
+                    nextLines.splice(targetLineIdx, 1);
+                    nextContent = nextLines.join('\n');
+
+                    step.instructions = `Delete line ${targetLineIdx + 1}: "${lineContent.trim()}"`;
+                    step.targetLine = targetLineIdx + 1;
+                    step.startLine = targetLineIdx + 1;
+                    validStep = true;
+
+                } else if (type === 1) {
+                    // Type 1: Delete Word
+                    // Find a line that has words
+                    let attempts = 0;
+                    while (targetLineIdx === -1 && attempts < 100) {
+                        const idx = randomInRange(stepSeed + attempts + 1000, 1, lines.length - 2);
+                        if (lines[idx].trim().length > 10) {
+                            // Must have at least one word > 2 chars
+                            if (/\b\w{3,}\b/.test(lines[idx])) targetLineIdx = idx;
+                        }
+                        attempts++;
+                    }
+                    if (targetLineIdx === -1) targetLineIdx = 7;
+
+                    const lineContent = lines[targetLineIdx];
+                    const wordsMap = [];
+                    let match;
+                    const wordRegex = /\b\w+\b/g;
+                    while ((match = wordRegex.exec(lineContent)) !== null) {
+                        if (match[0].length > 2) {
+                            wordsMap.push({ word: match[0], index: match.index });
+                        }
+                    }
+
+                    if (wordsMap.length > 0) {
+                        const targetObj = wordsMap[randomInRange(stepSeed, 0, wordsMap.length - 1)];
+                        const wordToDelete = targetObj.word;
+
+                        // Vim dw logic simulation
+                        const prefix = lineContent.substring(0, targetObj.index);
+                        const suffix = lineContent.substring(targetObj.index + wordToDelete.length);
+                        let newLine;
+
+                        if (suffix.startsWith(' ')) {
+                            newLine = prefix + suffix.substring(1);
+                        } else {
+                            newLine = prefix + suffix;
+                        }
+
+                        const nextLines = [...lines];
+                        nextLines[targetLineIdx] = newLine;
+                        nextContent = nextLines.join('\n');
+
+                        step.instructions = `Delete the word "${wordToDelete}" on line ${targetLineIdx + 1}.`;
+                        step.highlightWord = wordToDelete;
+                        step.highlightColumn = targetObj.index;
+                        step.targetLine = targetLineIdx + 1;
+                        step.startLine = targetLineIdx + 1;
+                        validStep = true;
+                    }
+                } else if (type === 2) {
+                    // Type 2: Delete 's' from 'items'
+                    const candidates = [];
+                    for (let l = 0; l < lines.length; l++) {
+                        let match;
+                        const regex = /items/g;
+                        while ((match = regex.exec(lines[l])) !== null) {
+                            if (match[0] === 'items') {
+                                candidates.push({ line: l, index: match.index, word: match[0] });
+                            }
+                        }
+                    }
+
+                    if (candidates.length > 0) {
+                        const choice = candidates[randomInRange(stepSeed, 0, candidates.length - 1)];
+                        const lineContent = lines[choice.line];
+
+                        // The 's' is at choice.index + 4 ("items" is 5 chars, indices 0-4)
+                        const sIndex = choice.index + 4;
+                        const sChar = lineContent[sIndex];
+
+                        if (sChar === 's') {
+                            // Delete just the 's'
+                            const newLine = lineContent.substring(0, sIndex) + lineContent.substring(sIndex + 1);
+
+                            const nextLines = [...lines];
+                            nextLines[choice.line] = newLine;
+                            nextContent = nextLines.join('\n');
+
+                            step.instructions = `Go to "${choice.word}" on line ${choice.line + 1} and delete the "s" at the end.`;
+                            step.highlightWord = "s"; // Highlighting just the 's'
+                            step.highlightColumn = sIndex;
+                            step.targetLine = choice.line + 1;
+                            step.startLine = choice.line + 1;
+                            validStep = true;
+                        }
+                    }
+                }
+
+                // Fallback
+                if (!validStep) {
+                    const fallbackIdx = 6;
+                    const nextLines = [...lines];
+                    if (nextLines.length > fallbackIdx) {
+                        nextLines.splice(fallbackIdx, 1);
+                        nextContent = nextLines.join('\n');
+                        step.instructions = `Delete line ${fallbackIdx + 1}.`;
+                        step.targetLine = fallbackIdx + 1;
+                        step.startLine = fallbackIdx + 1;
+                    } else {
+                        // Extremely unlikely fallback
+                        nextContent = currentContent;
+                    }
+                }
+
+                step.initialContent = currentContent;
+                step.targetContent = nextContent;
+                steps.push(step);
+                currentContent = nextContent;
+            }
+
+            return { steps };
+        },
+        timePar: 22000,
+        keyPressesPar: 33
+    },
+    {
+        id: 4,
+        name: "Refactor",
+        difficulty: "easy",
+        description: "A series of replacement and formatting tasks.",
+        help: [
+            {
+                title: "Changing Text",
+                content: "<ul><li><code>r</code>: Replace single character</li><li><code>cw</code>: Change word (delete word and enter insert mode)</li><li><code>cc</code>: Change entire line</li><li><code>C</code>: Change from cursor to end of line</li><li><code>A</code>: Append text at end of line</li><li><code>I</code>: Insert text at start of line</li></ul>"
+            }
+        ],
+        generate: (seed) => {
+            const steps = [];
+            let currentContent = EXPANDED_CODE_SAMPLE;
+            const numSteps = 6;
+
+            // 1. Replacements / Suffixes
+            const REPLACEMENTS = ["quack", "Lorem", "ipsum"];
+            const SUFFIXES = ["// TODO", "// WTF?", "// NOTE"];
+
+            // 2. Line Replacements
+            const NEW_LINES = ["return;", "let cc;", "var bob;"];
+            const taskTypes = [0, 0, 1, 1, 2, 2];
+
+            // Shuffle types
+            for (let i = taskTypes.length - 1; i > 0; i--) {
+                const j = randomInRange(seed + i * 99, 0, i);
+                [taskTypes[i], taskTypes[j]] = [taskTypes[j], taskTypes[i]];
+            }
+
+            for (let i = 0; i < numSteps; i++) {
+                const stepSeed = seed + i * 77;
+                const lines = currentContent.split('\n');
+                let step = null;
+                const type = taskTypes[i % taskTypes.length]; // cycle if numSteps > 5
+
+                if (type === 0) {
+                    // --- Type 0: Word Replacement or Suffix Append ---
+                    // Find a suitable line (not empty, valid words)
+                    let targetLineIdx = -1;
+                    let attempts = 0;
+                    while (targetLineIdx === -1 && attempts < 50) {
+                        const idx = randomInRange(stepSeed + attempts, 1, lines.length - 2);
+                        if (lines[idx].trim().length > 5 && !lines[idx].includes('quantity:')) {
+                            targetLineIdx = idx;
+                        }
+                        attempts++;
+                    }
+                    if (targetLineIdx === -1) targetLineIdx = 10; // Fallback
+
+                    const lineContent = lines[targetLineIdx];
+                    const words = lineContent.match(/\b\w+\b/g);
+
+                    // Decide: Replace Word (0) or Append Suffix (1)
+                    const subType = randomInRange(stepSeed, 0, 1);
+
+                    step = {
+                        targetLine: targetLineIdx + 1,
+                        checkType: 'content_match',
+                        highlightType: 'change'
+                    };
+
+                    if (words && words.length > 0 && subType === 0) {
+                        // Replace Word
+                        const targetWord = words[randomInRange(stepSeed + 1, 0, words.length - 1)];
+                        const newWord = REPLACEMENTS[randomInRange(stepSeed + 2, 0, REPLACEMENTS.length - 1)];
+                        const newLine = lineContent.replace(targetWord, newWord);
+
+                        step.instructions = `Change "${targetWord}" to "${newWord}" on line ${targetLineIdx + 1}.`;
+                        step.highlightWord = targetWord;
+                        step.highlightColumn = lineContent.indexOf(targetWord);
+                        step.overlays = [{
+                            line: targetLineIdx + 1,
+                            col: lineContent.indexOf(targetWord) + 1,
+                            text: `Change to "${newWord}"`
+                        }];
+
+                        const nextLines = [...lines];
+                        nextLines[targetLineIdx] = newLine;
+                        step.initialContent = currentContent;
+                        step.targetContent = nextLines.join('\n');
+
+                    } else {
+                        // Append Suffix
+                        const suffix = SUFFIXES[randomInRange(stepSeed + 3, 0, SUFFIXES.length - 1)];
+                        const newLine = lineContent + suffix;
+
+                        step.instructions = `Append "${suffix.trim()}" to the end of line ${targetLineIdx + 1}.`;
+                        step.overlays = [{
+                            line: targetLineIdx + 1,
+                            col: lineContent.length + 1,
+                            text: `Append "${suffix.trim()}"`
+                        }];
+
+                        const nextLines = [...lines];
+                        nextLines[targetLineIdx] = newLine;
+                        step.initialContent = currentContent;
+                        step.targetContent = nextLines.join('\n');
+                    }
+                } else if (type === 1) {
+                    // --- Type 1: Entire Line Replacement ---
+                    let targetLineIdx = -1;
+                    let attempts = 0;
+                    while (targetLineIdx === -1 && attempts < 50) {
+                        // Prefer lines inside functions (indented)
+                        const idx = randomInRange(stepSeed + attempts * 2, 6, 28);
+                        const line = lines[idx] || "";
+                        // Simple heuristic for indentation: starts with space, and long enough to be interesting
+                        if (line.startsWith('  ') && line.trim().length > 20) {
+                            targetLineIdx = idx;
+                        }
+                        attempts++;
+                    }
+                    if (targetLineIdx === -1) targetLineIdx = 12;
+
+                    const originalLine = lines[targetLineIdx];
+                    const indentMatch = originalLine.match(/^\s*/);
+                    const indent = indentMatch ? indentMatch[0] : "";
+
+                    const newContentRaw = NEW_LINES[randomInRange(stepSeed, 0, NEW_LINES.length - 1)];
+                    const newLine = indent + newContentRaw;
+
+                    step = {
+                        targetLine: targetLineIdx + 1,
+                        checkType: 'content_match',
+                        highlightType: 'change',
+                        instructions: `Change the entire line ${targetLineIdx + 1} to "${newContentRaw}" (keep indentation).`,
+                        initialContent: currentContent,
+                        overlays: [{
+                            line: targetLineIdx + 1,
+                            col: indent.length + 1,
+                            text: `Change line to "${newContentRaw}"`
+                        }]
+                    };
+
+                    const nextLines = [...lines];
+                    nextLines[targetLineIdx] = newLine;
+                    step.targetContent = nextLines.join('\n');
+
+                } else if (type === 2) {
+                    // --- Type 2: Quantity Change ---
+                    // Find lines resembling: { ... quantity: N, ... }
+                    const quantityCandidates = [];
+                    const pattern = /quantity:\s*(\d+)/;
+
+                    for (let l = 0; l < lines.length; l++) {
+                        const match = lines[l].match(pattern);
+                        if (match) {
+                            quantityCandidates.push({
+                                lineIdx: l,
+                                value: parseInt(match[1]),
+                                fullMatch: match[0],
+                                index: match.index
+                            });
+                        }
+                    }
+
+                    if (quantityCandidates.length > 0) {
+                        const choice = quantityCandidates[randomInRange(stepSeed, 0, quantityCandidates.length - 1)];
+
+                        let newQty = choice.value;
+                        let qtyAttempts = 0;
+                        // specific logic: "any other single digit"
+                        while (newQty === choice.value && qtyAttempts < 10) {
+                            newQty = randomInRange(stepSeed + newQty + 1 + qtyAttempts, 1, 9);
+                            qtyAttempts++;
+                        }
+                        if (newQty === choice.value) {
+                            newQty = (newQty === 9) ? 1 : newQty + 1; // Deterministic fallback
+                        }
+
+                        const newLine = lines[choice.lineIdx].replace(
+                            `quantity: ${choice.value}`,
+                            `quantity: ${newQty}`
+                        );
+
+                        step = {
+                            targetLine: choice.lineIdx + 1,
+                            checkType: 'content_match',
+                            highlightType: 'change',
+                            instructions: `Change quantity from ${choice.value} to ${newQty} on line ${choice.lineIdx + 1}.`,
+                            initialContent: currentContent,
+                            highlightWord: String(choice.value),
+                            highlightColumn: choice.index + 10, // "quantity: ".length is roughly 10
+                            overlays: [{
+                                line: choice.lineIdx + 1,
+                                col: choice.index + 10 + 1,
+                                text: `Change to ${newQty}`
+                            }]
+                        };
+
+                        const nextLines = [...lines];
+                        nextLines[choice.lineIdx] = newLine;
+                        step.targetContent = nextLines.join('\n');
+                    } else {
+                        // Fallback to Type 0 if no quantity found (shouldn't happen with EXPANDED_CODE_SAMPLE)
+                        // ... (Re-use Type 0 logic or just skip/no-op? Better to just pick a random line replacement fallback)
+                        const fallbackIdx = 13;
+                        step = {
+                            targetLine: fallbackIdx,
+                            checkType: 'content_match',
+                            highlightType: 'change',
+                            instructions: `Delete line ${fallbackIdx} (fallback).`, // Simple fallback
+                            initialContent: currentContent
+                        };
+                        const nextLines = [...lines];
+                        nextLines.splice(fallbackIdx - 1, 1);
+                        step.targetContent = nextLines.join('\n');
+                    }
+                }
+
+                if (step) {
+                    currentContent = step.targetContent;
+                    steps.push(step);
+                }
+            }
+
+            return { steps };
+        },
+        timePar: 30000,
+        keyPressesPar: 65
     },
     {
         id: 5,
